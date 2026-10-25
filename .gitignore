@@ -28,7 +28,7 @@ outputs/
 .env.*
 registrations.json
 .video2datapack/
-.visual2craft/
+.mimeticraft/
 pending_authorization_url.txt
 
 # Editors and operating systems

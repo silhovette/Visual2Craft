@@ -11,7 +11,7 @@ import zipfile
 
 from block_rules import classify_block, cells, prepare_plan, split_block
 from video2pack import (MAX_COMMANDS, PALETTE_SET, SCENE_SCHEMA, check_block,
-                        compile_datapack, infer_scene, make_commands,
+                        compile_datapack, infer_scene, make_commands, make_entity_commands,
                         make_undo_commands, run, validate_scene)
 
 
@@ -24,6 +24,37 @@ def scene(*ops):
 
 
 class SpecialBlockTests(unittest.TestCase):
+    def test_placeable_entities_are_summoned_and_undo_tagged(self):
+        source = {
+            'name': 'entity objects', 'size': [12, 8, 12],
+            'ops': [op('minecraft:stone')],
+            'entities': [
+                {'entity': 'minecraft:armor_stand', 'position': [1, 1, 1],
+                 'rotation': [90, 0], 'nbt': {'Invisible': False},
+                 'evidence': {'frames': [4], 'observation': 'Armor stand is shown', 'hint': None}},
+                {'entity': 'minecraft:painting', 'position': [2, 2, 2],
+                 'nbt': {'variant': 'minecraft:kebab', 'Facing': 2},
+                 'evidence': {'frames': [4], 'observation': 'Painting is shown', 'hint': None}},
+                {'entity': 'minecraft:item_frame', 'position': [3, 2, 2],
+                 'nbt': {'Facing': 4},
+                 'evidence': {'frames': [4], 'observation': 'Item frame is shown', 'hint': None}},
+            ],
+        }
+        commands = make_entity_commands(validate_scene(source))
+        self.assertIn('summon minecraft:armor_stand', commands[0])
+        self.assertIn('summon minecraft:painting', commands[1])
+        self.assertIn('summon minecraft:item_frame', commands[2])
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp) / 'entities.zip'
+            compile_datapack(source, output)
+            with zipfile.ZipFile(output) as pack:
+                build = pack.read('data/vidbuild/function/parts/part_000.mcfunction').decode()
+                undo = pack.read('data/vidbuild/function/parts/undo_part_000.mcfunction').decode()
+                self.assertIn('summon minecraft:armor_stand', build)
+                self.assertIn('summon minecraft:painting', build)
+                self.assertIn('summon minecraft:item_frame', build)
+                self.assertIn('kill @e[tag=vidbuild_entity', undo)
+
     def test_classification_and_independent_commands(self):
         blocks = [('minecraft:air', 'air'), ('minecraft:glass', 'glass'),
                   ('minecraft:glass_pane', 'glass_pane'), ('minecraft:water[level=0]', 'water'),
@@ -42,20 +73,47 @@ class SpecialBlockTests(unittest.TestCase):
                 self.assertEqual(check_block(block), block)
                 self.assertEqual(make_commands(scene(op(block))), [f'setblock ~0 ~0 ~0 {block} strict'])
 
-    def test_states_are_block_specific_and_range_checked(self):
-        invalid = ['minecraft:light[level=16]', 'minecraft:light[level=-1]',
-                   'minecraft:light[level=8,level=15]', 'minecraft:water[level=16]',
-                   'minecraft:water[waterlogged=true]', 'minecraft:stone[level=8]',
-                   'minecraft:glass[waterlogged=true]', 'minecraft:air[level=0]',
-                   'minecraft:structure_void[waterlogged=true]',
-                   'minecraft:glass_pane[north=up]', 'minecraft:light[facing=north]',
-                   'minecraft:oak_stairs[facing=up]', 'minecraft:oak_door[half=top]']
+    def test_states_are_syntax_checked_without_a_stale_state_whitelist(self):
+        invalid = ['minecraft:light[level=8,level=15]',
+                   'minecraft:stone[level=8,foo]',
+                   'minecraft:stone[level=8,level=9]']
         for block in invalid:
             with self.subTest(block=block), self.assertRaises(ValueError):
                 check_block(block)
-        for level in range(16):
-            check_block(f'minecraft:water[level={level}]')
+        check_block('minecraft:light[level=16]')
+        check_block('minecraft:water[level=16]')
+        check_block('minecraft:cave_vines[berries=true]')
+        self.assertEqual(check_block('minecraft:chain[axis=y]'), 'minecraft:iron_chain[axis=y]')
+        check_block('minecraft:stone[level=8]')
         check_block('minecraft:glass_pane[north=true,east=false,waterlogged=true]')
+
+    def test_lava_like_materials_are_replaced_with_luminous_block(self):
+        self.assertEqual(check_block('minecraft:lava[level=4]'), 'minecraft:ochre_froglight')
+        self.assertEqual(check_block('minecraft:magma_block'), 'minecraft:ochre_froglight')
+        self.assertEqual(check_block('minecraft:lava_cauldron[level=3]'), 'minecraft:ochre_froglight')
+
+    def test_base_y_maps_below_and_above_player_baseline(self):
+        source = {'name': 'base y', 'size': [4, 6, 4], 'base_y': 2,
+                  'ops': [op('minecraft:stone', (0, 1, 0), (0, 3, 0))]}
+        self.assertEqual(make_commands(source), [
+            'fill ~0 ~-1 ~0 ~0 ~1 ~0 minecraft:stone strict'])
+
+    def test_lectern_states_are_supported(self):
+        block = 'minecraft:lectern[facing=west,has_book=true,powered=false]'
+        self.assertEqual(check_block(block), block)
+
+    def test_common_vanilla_state_families_are_supported(self):
+        for block in (
+                'minecraft:oak_fence_gate[facing=north,in_wall=false,open=true,powered=false]',
+                'minecraft:oak_button[face=wall,facing=west,powered=false]',
+                'minecraft:oak_sign[rotation=7,waterlogged=false]',
+                'minecraft:chest[facing=south,type=single,waterlogged=false]',
+                'minecraft:furnace[facing=east,lit=false]',
+                'minecraft:campfire[facing=north,lit=true,signal_fire=false,waterlogged=false]',
+                'minecraft:rail[shape=ascending_east]',
+                'minecraft:white_candle[candles=2,lit=true,waterlogged=false]'):
+            with self.subTest(block=block):
+                self.assertEqual(check_block(block), block)
 
     def test_all_stained_glass_and_panes_are_supported(self):
         colors = ('white','orange','magenta','light_blue','yellow','lime','pink','gray',
@@ -76,9 +134,9 @@ class SpecialBlockTests(unittest.TestCase):
             self.assertNotIn('~2 ~0 ~0', '\n'.join(make_undo_commands(source)))
         self.assertIn('minecraft:structure_void', make_commands(scene(op('minecraft:structure_void')))[0])
 
-    def test_unknown_block_rejected_not_substituted_with_air(self):
-        with self.assertRaisesRegex(ValueError, 'Unsupported block ID'):
-            make_commands(scene(op('minecraft:unrecognized')))
+    def test_malformed_block_id_rejected_not_substituted_with_air(self):
+        with self.assertRaisesRegex(ValueError, 'Malformed block identifier'):
+            make_commands(scene(op('minecraft:bad id')))
         with self.assertRaisesRegex(ValueError, 'No confirmed placements'):
             with tempfile.TemporaryDirectory() as temp:
                 compile_datapack(scene(op(None, action='unknown')), Path(temp)/'bad.zip')
@@ -93,14 +151,11 @@ class SpecialBlockTests(unittest.TestCase):
             validate_scene(scene(op('minecraft:glass', action='clear')))
         self.assertIn('minecraft:air', make_commands(scene(op('minecraft:air', action='clear')))[0])
 
-    def test_special_conflicts_require_deliberate_replacement(self):
+    def test_overlapping_operations_use_later_operation(self):
         for special in ('minecraft:light[level=8]', 'minecraft:barrier', 'minecraft:glass',
                         'minecraft:structure_void', 'minecraft:water[level=0]'):
             with self.subTest(block=special):
                 source = scene(op(special), op('minecraft:stone'))
-                with self.assertRaisesRegex(ValueError, 'replace=true'):
-                    make_commands(source)
-                source['ops'][1]['replace'] = True
                 self.assertEqual(make_commands(source), ['setblock ~0 ~0 ~0 minecraft:stone strict'])
                 self.assertNotIn(special, '\n'.join(make_undo_commands(source)))
 
@@ -152,35 +207,38 @@ class SpecialBlockTests(unittest.TestCase):
                 self.assertIsNone(pack.testzip())
                 self.assertNotIn('data/vidbuild/function/internal/check_water.mcfunction', pack.namelist())
 
-    def test_open_water_gets_preflight_before_history_or_placement(self):
+    def test_water_accepts_any_occupied_planned_boundary_shape(self):
+        source = scene(op('minecraft:water[level=0]', (1,1,1)),
+                       op('minecraft:stone', (0,0,0), (2,0,2)),
+                       op('minecraft:glass', (0,1,0), (0,1,2)),
+                       op('minecraft:glass_pane', (2,1,0), (2,1,2)),
+                       op('minecraft:glass', (1,1,0)), op('minecraft:glass', (1,1,2)))
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp) / 'pane_water.zip'
+            compile_datapack(source, output)
+            self.assertTrue(output.is_file())
+
+    def test_open_water_builds_without_preflight_or_fluid_tags(self):
         with tempfile.TemporaryDirectory() as temp:
             out = Path(temp)/'water.zip'
             compile_datapack(scene(op('minecraft:water[level=0]')), out)
             with zipfile.ZipFile(out) as pack:
                 root = 'data/vidbuild/function/'
                 guard = pack.read(root+'internal/build_at_origin.mcfunction').decode()
-                checks = pack.read(root+'internal/check_water.mcfunction').decode()
                 commit = pack.read(root+'internal/commit_build.mcfunction').decode()
-                self.assertIn('water_check{ok:1b}', guard)
-                self.assertNotIn('last set value', guard)
+                self.assertNotIn('water_check', guard)
+                self.assertIn('data modify storage vidbuild:history last', guard)
+                self.assertIn('function vidbuild:parts/all', guard)
                 self.assertIn('last set value', commit)
-                self.assertIn('unless loaded', checks)
-                self.assertIn('#vidbuild:fluid_seals', checks)
-                self.assertIn('~-1 ~0 ~0', checks)
-                self.assertIn('data remove storage vidbuild:history water_check', guard)
-                values = json.loads(pack.read('data/vidbuild/tags/block/fluid_seals.json'))['values']
-                self.assertIn('minecraft:glass', values)
-                self.assertIn('minecraft:barrier', values)
-                self.assertNotIn('minecraft:air', values)
-                self.assertNotIn('minecraft:light', values)
+                self.assertNotIn(root+'internal/check_water.mcfunction', pack.namelist())
+                self.assertNotIn('data/vidbuild/tags/block/fluid_seals.json', pack.namelist())
 
-    def test_known_leak_is_rejected_without_writing_zip(self):
+    def test_planned_air_next_to_water_does_not_abort_generation(self):
         with tempfile.TemporaryDirectory() as temp:
-            out = Path(temp)/'bad.zip'
-            with self.assertRaisesRegex(ValueError, 'Unsealed water boundary'):
-                compile_datapack(scene(op('minecraft:water[level=0]', (1,1,1)),
-                                       op('minecraft:air', (2,1,1))), out)
-            self.assertEqual(list(Path(temp).iterdir()), [])
+            out = Path(temp)/'open_water.zip'
+            compile_datapack(scene(op('minecraft:water[level=0]', (1,1,1)),
+                                   op('minecraft:air', (2,1,1))), out)
+            self.assertEqual(list(Path(temp).iterdir()), [out])
 
     def test_special_zip_undo_uses_saved_origin_and_clears_history(self):
         source = scene(op('minecraft:light[level=15,waterlogged=true]', (1,1,1)),
@@ -328,10 +386,12 @@ class SpecialBlockTests(unittest.TestCase):
             result = infer_scene(Path('mock.mp4'),'m',2,access_token='test',building_hints='Place light level 8')
             self.assertIn('level=8', result['ops'][0]['block'])
             prompt = '\n'.join(c.get('text','') for c in seen['input'][0]['content'])
-            for text in ('Brightness alone is NOT evidence', 'waterlogged', 'USER BUILDING HINTS'):
+            for text in ('Brightness alone is NOT evidence', 'waterlogged',
+                         'USER BUILDING HINTS', 'TRANSPARENT MATERIAL VS INVISIBLE BARRIER'):
                 self.assertIn(text, prompt)
-            with self.assertRaisesRegex(ValueError,'hint that was not supplied'):
-                infer_scene(Path('mock.mp4'),'m',2,access_token='test')
+            without_hint = infer_scene(Path('mock.mp4'),'m',2,access_token='test')
+            self.assertEqual(without_hint['ops'][0]['action'], 'unknown')
+            self.assertIsNone(without_hint['ops'][0]['block'])
             payload['ops'][0]['evidence']['frames'] = [999]
-            with self.assertRaisesRegex(ValueError,'frame that was not supplied'):
-                infer_scene(Path('mock.mp4'),'m',2,access_token='test',building_hints='Place light level 8')
+            sanitized = infer_scene(Path('mock.mp4'),'m',2,access_token='test',building_hints='Place light level 8')
+            self.assertEqual(sanitized['ops'][0]['evidence']['frames'], [])

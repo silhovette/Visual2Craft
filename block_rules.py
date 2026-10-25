@@ -3,6 +3,7 @@
 No vision model is run here. Unknown/preserved space is an exclusion mask, not air.
 """
 from itertools import product
+from pathlib import Path
 
 COLORS = ('white', 'orange', 'magenta', 'light_blue', 'yellow', 'lime', 'pink',
           'gray', 'light_gray', 'cyan', 'purple', 'blue', 'brown', 'green', 'red', 'black')
@@ -10,45 +11,15 @@ SPECIAL_PALETTE = ['light', 'barrier', 'structure_void'] + [
     f'{color}_stained_glass{suffix}' for color in COLORS for suffix in ('', '_pane')]
 BOOL = {'true', 'false'}
 HORIZONTAL = {'north', 'south', 'east', 'west'}
+SIX_WAY = HORIZONTAL | {'up', 'down'}
 DIRECTIONS = {'north': (0, 0, -1), 'south': (0, 0, 1),
               'east': (1, 0, 0), 'west': (-1, 0, 0)}
 
-BLOCK_KNOWLEDGE = """
-SPECIAL BLOCK EVIDENCE AND SEMANTICS:
-Use chronological before/after placement changes, held items/hotbar icons, block
-names/text, edges/textures/thickness, multiple views, water motion/submersion and
-observable collisions. Color alone is insufficient, especially with shaders.
-air: invisible, no collision/light. Only action=clear explicitly clears confirmed
-empty space. Unobserved space is unknown, NEVER an automatic air fill.
-light: invisible, no ordinary solid collision, level=0..15, waterlogged=true/false.
-Brightness alone is NOT evidence. Require placement/item evidence or an explicit
-user instruction. Examples: minecraft:light[level=8],
-minecraft:light[level=15,waterlogged=true]. Level 0 does not emit light.
-barrier: invisible SOLID collision. Require item markers, placement/collision
-evidence or explicit instructions, never infer it from transparency alone.
-structure_void: invisible, no ordinary solid collision. action=place means the
-actual block; action=preserve means leave the original world untouched, generating
-NO placement or removal command there. These meanings are not interchangeable.
-glass/stained_glass: transparent full collision blocks, with visible edges/texture;
-not air, water or invisible barriers. glass_pane/stained_glass_pane: thin connected
-panels, NOT full glass; north/south/east/west=true/false and waterlogged=true/false.
-water: a fluid, not transparent solid. level=0 is a source; level=1..15 represents
-flow/falling states. Use motion, surface height, refraction and immersion rather
-than color. Distinguish standalone water from another block's waterlogged=true.
-Plan a watertight bottom and sides before water/waterlogged blocks. Do not invent
-barriers to contain it. If a container cannot be established, mark it uncertain.
-The final camera image alone cannot distinguish air/light/barrier/structure_void.
-For insufficient evidence use action=unknown, confidence=uncertain, block=null.
-Every operation includes evidence.frames (actual provided video frame IDs), a
-short observation, and evidence.hint (the exact supplied hint when applicable,
-otherwise null). Hint-only decisions must explicitly say no direct video evidence;
-hints do not turn absent visual evidence into an observation.
-Use action=place for confirmed placement, clear only for deliberate air clearing,
-preserve for retaining the existing world, unknown for uncertain observations.
-Use replace=true only for a deliberate later replacement of an earlier special
-block at the SAME coordinates. A waterlogged block occupies one cell: do not also
-place independent water over that cell. Ops still execute in their stated plan order.
-"""
+try:
+    BLOCK_KNOWLEDGE = Path(__file__).with_name("02_BLOCK_KNOWLEDGE.txt").read_text(
+        encoding="utf-8").strip()
+except OSError as exc:  # pragma: no cover - packaging failure, not model logic
+    raise RuntimeError("Missing prompt asset: 02_BLOCK_KNOWLEDGE.txt") from exc
 
 
 def split_block(block):
@@ -70,6 +41,14 @@ def state_rules(name):
         return {'waterlogged': BOOL}
     if is_pane(name) or name.endswith('_fence') or name == 'iron_bars':
         return {**{key: BOOL for key in HORIZONTAL}, 'waterlogged': BOOL}
+    if name.endswith('_fence_gate'):
+        return {'facing': HORIZONTAL, 'in_wall': BOOL, 'open': BOOL, 'powered': BOOL}
+    if name.endswith('_button'):
+        return {'face': {'floor', 'wall', 'ceiling'}, 'facing': HORIZONTAL, 'powered': BOOL}
+    if name.endswith('_pressure_plate'):
+        if name in {'light_weighted_pressure_plate', 'heavy_weighted_pressure_plate'}:
+            return {'power': {str(i) for i in range(16)}}
+        return {'powered': BOOL}
     if name.endswith('_stairs'):
         return {'facing': HORIZONTAL, 'half': {'top', 'bottom'}, 'waterlogged': BOOL,
                 'shape': {'straight', 'inner_left', 'inner_right', 'outer_left', 'outer_right'}}
@@ -81,6 +60,41 @@ def state_rules(name):
                 'powered': BOOL, 'hinge': {'left', 'right'}}
     if name.endswith('_slab'):
         return {'type': {'top', 'bottom', 'double'}, 'waterlogged': BOOL}
+    if name.endswith('_wall_hanging_sign'):
+        return {'facing': HORIZONTAL, 'attached': BOOL, 'waterlogged': BOOL}
+    if name.endswith('_hanging_sign'):
+        return {'rotation': {str(i) for i in range(16)}, 'attached': BOOL, 'waterlogged': BOOL}
+    if name.endswith('_wall_sign'):
+        return {'facing': HORIZONTAL, 'waterlogged': BOOL}
+    if name.endswith('_sign'):
+        return {'rotation': {str(i) for i in range(16)}, 'waterlogged': BOOL}
+    if name in {'chest', 'trapped_chest', 'copper_chest'}:
+        return {'facing': HORIZONTAL, 'type': {'single', 'left', 'right'}, 'waterlogged': BOOL}
+    if name in {'furnace', 'smoker', 'blast_furnace'}:
+        return {'facing': HORIZONTAL, 'lit': BOOL}
+    if name in {'campfire', 'soul_campfire'}:
+        return {'facing': HORIZONTAL, 'lit': BOOL, 'signal_fire': BOOL, 'waterlogged': BOOL}
+    if name == 'hopper':
+        return {'facing': SIX_WAY, 'enabled': BOOL}
+    if name in {'dispenser', 'dropper'}:
+        return {'facing': SIX_WAY, 'triggered': BOOL}
+    if name == 'observer':
+        return {'facing': SIX_WAY, 'powered': BOOL}
+    if name in {'repeater'}:
+        return {'facing': HORIZONTAL, 'delay': {'1', '2', '3', '4'}, 'locked': BOOL, 'powered': BOOL}
+    if name == 'comparator':
+        return {'facing': HORIZONTAL, 'mode': {'compare', 'subtract'}, 'powered': BOOL}
+    if name in {'rail', 'golden_rail', 'detector_rail', 'activator_rail'}:
+        rules = {'shape': {'north_south', 'east_west', 'ascending_east', 'ascending_west',
+                           'ascending_north', 'ascending_south', 'south_east', 'south_west',
+                           'north_west', 'north_east'}}
+        if name != 'rail':
+            rules['powered'] = BOOL
+        return rules
+    if name.endswith('_candle'):
+        return {'candles': {'1', '2', '3', '4'}, 'lit': BOOL, 'waterlogged': BOOL}
+    if name in {'amethyst_cluster', 'large_amethyst_bud', 'medium_amethyst_bud', 'small_amethyst_bud'}:
+        return {'facing': SIX_WAY, 'waterlogged': BOOL}
     if name.endswith(('_log', '_wood')):
         return {'axis': {'x', 'y', 'z'}}
     if name.endswith('_leaves'):
@@ -91,6 +105,8 @@ def state_rules(name):
         return {'facing': HORIZONTAL | {'up', 'down'}}
     if name == 'barrel':
         return {'facing': HORIZONTAL | {'up', 'down'}, 'open': BOOL}
+    if name == 'lectern':
+        return {'facing': HORIZONTAL, 'has_book': BOOL, 'powered': BOOL}
     if name == 'grass_block':
         return {'snowy': BOOL}
     return {}
@@ -159,6 +175,17 @@ def subtract(box, mask):
 
 def resolve_operations(ops, limit):
     masks = [op for op in ops if op['action'] in ('preserve', 'unknown') or op['confidence'] == 'uncertain']
+    # Unknown/preserve masks are deliberately conservative, but they must not
+    # erase a confirmed invisible special block that the v2 prompt traced to
+    # readable on-video placement text.
+    confirmed_special = [
+        op for op in ops
+        if op['action'] == 'place' and op['confidence'] == 'confirmed'
+        and split_block(op.get('block', ''))[0] in ('light', 'barrier')
+    ]
+    for mask in masks:
+        if any(intersect(mask, special) for special in confirmed_special):
+            raise ValueError('Unknown/preserve mask overlaps a confirmed Light/Barrier placement')
     plan = []
     for op in ops:
         if op in masks:
@@ -169,11 +196,9 @@ def resolve_operations(ops, limit):
         for piece in pieces:
             kept = []
             for old in plan:
-                protected = classify_block(old['block']) not in ('solid_or_decoration', 'air') or has_water(old['block'])
-                if (intersect(old, piece) and protected and
-                        canonical_block(old['block']) != canonical_block(piece['block']) and
-                        not piece['replace']):
-                    raise ValueError('Overlapping special blocks require replace=true for the intentional later replacement')
+                # Operations are an ordered final plan. If the model repeats a
+                # coordinate, the later operation wins deterministically;
+                # missing replace=true must not abort an otherwise usable scene.
                 kept.extend(subtract(old, piece))
             plan = kept + [piece]
             if len(plan) > limit:
@@ -210,22 +235,6 @@ def prepare_plan(ops, limit):
     if len(resolved) > limit:
         raise ValueError('Pane connections produce too many command regions')
     return resolved
-
-
-def water_boundaries(plan):
-    world = {point: op['block'] for op in plan for point in cells(op)}
-    boundaries = set()
-    for point, block in world.items():
-        if not has_water(block):
-            continue
-        for delta in (*DIRECTIONS.values(), (0, -1, 0)):
-            neighbor = tuple(point[i] + delta[i] for i in range(3))
-            other = world.get(neighbor)
-            if other is None:
-                boundaries.add(neighbor)
-            elif not (has_water(other) or full_seal(other)):
-                raise ValueError(f'Unsealed water boundary at {neighbor}: {other}. Plan a watertight container first.')
-    return sorted(boundaries)
 
 
 def build_phase(op):

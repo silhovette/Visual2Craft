@@ -27,7 +27,7 @@ ISSUER = 'https://auth.openai.com'
 RESOURCE = 'https://api.openai.com/v1'
 SCOPES = 'openid profile email offline_access resource.invoke chatgpt.tokens.use.direct'
 SERVICE = 'video2datapack_siwc_v03'
-APP_NAME = 'Visual2Craft'
+APP_NAME = 'MimetiCraft'
 
 
 def _deps():
@@ -104,26 +104,24 @@ class ChatGPTAuth:
         return next((a for a in self.accounts() if a.client_id == self.config.get('active')), None)
 
     def select(self, client_id: str):
-        with self._token_lock:
-            if client_id not in {x.client_id for x in self.accounts()}:
-                raise ValueError('Unknown ChatGPT registration')
-            self.config['active'] = client_id
-            self._save()
+        if client_id not in {x.client_id for x in self.accounts()}:
+            raise ValueError('Unknown ChatGPT registration')
+        self.config['active'] = client_id
+        self._save()
 
     def delete_account(self, client_id: str) -> str:
         """Remove one saved registration and its local credential record."""
-        with self._token_lock:
-            account = next((a for a in self.accounts() if a.client_id == client_id), None)
-            if not account:
-                raise ValueError('Unknown ChatGPT registration')
-            self._delete_tokens(client_id)
-            self.config['accounts'] = [x for x in self.config['accounts']
-                                       if x.get('client_id') != client_id]
-            if self.config.get('active') == client_id:
-                self.config['active'] = (self.config['accounts'][0]['client_id']
-                                         if self.config['accounts'] else None)
-            self._save()
-            return account.email
+        account = next((a for a in self.accounts() if a.client_id == client_id), None)
+        if not account:
+            raise ValueError('Unknown ChatGPT registration')
+        self._delete_tokens(client_id)
+        self.config['accounts'] = [x for x in self.config['accounts']
+                                   if x.get('client_id') != client_id]
+        if self.config.get('active') == client_id:
+            self.config['active'] = (self.config['accounts'][0]['client_id']
+                                     if self.config['accounts'] else None)
+        self._save()
+        return account.email
 
     @staticmethod
     def _vault():
@@ -220,8 +218,7 @@ class ChatGPTAuth:
             raise RuntimeError('Authorization response did not contain an access token.')
         return payload
 
-    def sign_in(self, *, add_account: bool = False, timeout: int = 240,
-                cancel_event: threading.Event | None = None) -> Account:
+    def sign_in(self, *, add_account: bool = False, timeout: int = 240) -> Account:
         """Run in a background thread (not on Tk's UI thread)."""
         existing = self.selected() if not add_account else None
         client_id = existing.client_id if existing else 'dynamic_agent_client'
@@ -251,7 +248,7 @@ class ChatGPTAuth:
                 self.send_header('Content-Type', 'text/html; charset=utf-8')
                 self.send_header('Cache-Control', 'no-store')
                 self.end_headers()
-                self.wfile.write(b'<!doctype html><html><meta charset="utf-8"><title>Visual2Craft</title><body><h3>Authentication received.</h3><p>Return to Visual2Craft. You can close this tab.</p></body></html>')
+                self.wfile.write(b'<!doctype html><html><meta charset="utf-8"><title>MimetiCraft</title><body><h3>Authentication received.</h3><p>Return to MimetiCraft. You can close this tab.</p></body></html>')
 
             def log_message(self, fmt, *args):
                 # Never log callback URI; it contains the authorization code.
@@ -269,14 +266,8 @@ class ChatGPTAuth:
                                     id_token_hint=previous.get('id_token') if previous else None)
             if not webbrowser.open(url):
                 raise RuntimeError('Could not open your browser for ChatGPT login. Check default browser settings.')
-            deadline = time.monotonic() + timeout
-            while not done.is_set():
-                if cancel_event is not None and cancel_event.is_set():
-                    raise RuntimeError('ChatGPT sign-in canceled.')
-                remaining = deadline - time.monotonic()
-                if remaining <= 0:
-                    raise TimeoutError('ChatGPT login timed out. Click Continue with ChatGPT to try again.')
-                done.wait(min(.1, remaining))
+            if not done.wait(timeout):
+                raise TimeoutError('ChatGPT login timed out. Click Continue with ChatGPT to try again.')
         finally:
             server.shutdown()
             server.server_close()
@@ -307,15 +298,12 @@ class ChatGPTAuth:
             raise RuntimeError('Refresh token missing; ChatGPT plan access was not saved.')
         record = {**tokens, 'saved_at': time.time(), 'subject': claims['sub'],
                   'email': claims.get('email', ''), 'scopes': sorted(scopes)}
+        self._save_tokens(issued, record)
         account = Account(issued, claims['sub'], claims.get('email') or 'ChatGPT account')
-        with self._token_lock:
-            if cancel_event is not None and cancel_event.is_set():
-                raise RuntimeError('ChatGPT sign-in canceled.')
-            self._save_tokens(issued, record)
-            if issued not in {a.client_id for a in self.accounts()}:
-                self.config['accounts'].append(vars(account))
-            self.config['active'] = issued
-            self._save()
+        if issued not in {a.client_id for a in self.accounts()}:
+            self.config['accounts'].append(vars(account))
+        self.config['active'] = issued
+        self._save()
         return account
 
     def access_token(self) -> str:

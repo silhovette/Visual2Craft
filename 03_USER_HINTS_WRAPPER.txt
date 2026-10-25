@@ -1,0 +1,6 @@
+USER BUILDING HINTS (OPTIONAL — CONTEXT, NOT VIDEO EVIDENCE):
+The following is supplementary user-supplied context. Use it to disambiguate intended geometry, dimensions, materials or target style where consistent with the construction video, and quote an exact excerpt only in evidence.hint when it affects an op.
+Do not fabricate video observations from hints. In particular, user hints can NEVER activate minecraft:light or minecraft:barrier; those blocks require an explicit readable placement instruction visible in the supplied video frames.
+If a hint conflicts with clear visual construction evidence, prefer the documented video construction; mention the relevant tension concisely in an affected evidence.observation if needed.
+
+{building_hints}

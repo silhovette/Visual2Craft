@@ -1,0 +1,22 @@
+INTEGRATION — ORIGINAL ONE-CALL FLOW PRESERVED
+
+Main content:
+  prompt = RECONSTRUCTION_PROMPT + "\n\n" + BLOCK_KNOWLEDGE
+
+Optional hints, only when nonempty:
+  content.append({"type":"input_text", "text": USER_HINTS_WRAPPER.format(building_hints=building_hints)})
+
+For each extracted (frame_id, jpg):
+  content.append({"type":"input_text", "text": FRAME_WRAPPER.format(index=index, frames=frames, frame_id=frame_id)})
+  content.append({"type":"input_image", ... JPG image ...})
+
+Leave SCENE_SCHEMA unchanged. Do not add extra keys or extra model requests.
+
+IMPORTANT COMPATIBILITY NOTES:
+- Prompt alone cannot remove video2pack.py check_block() PALETTE_SET whitelist validation. Removing the palette from the prompt is NOT sufficient. Adjust whitelist code so all existing vanilla Minecraft Java 26.3 block IDs are accepted while retaining identifier/state safety and world-version checks.
+- Existing state_rules() only knows a limited set of state families; allowing all block IDs is not the same as allowing all valid block states. A full versioned registry is the robust solution; relaxing syntax checks permits unrecognized or illegal IDs/states and risks invalid Datapack commands.
+- Current resolve_operations() collects all unknown/preserve regions as exclusion masks and subtracts them from earlier confirmed placements. The revised prompt forbids such overlap, but a prompt cannot deterministically guarantee correct compliance. For a guarantee, add deterministic checks protecting text-confirmed Light/Barrier placements and rejecting or safely resolving overlapping mask conflicts.
+- Program currently supplies sampled JPEG frames only, so an explicit textual instruction is available only when captured and readable in at least one supplied frame; it does not separately transcribe the original audio or full video. A text instruction that falls between sampled frames cannot be recognized reliably from this input.
+- No JSON field can independently store an OCR transcript; direct video quotes go in evidence.observation, and evidence.frames refers to actual supplied frame IDs.
+- 'All game blocks' means real vanilla block IDs in the target version, NOT fabricated IDs, modded blocks without installed mods, block entities with complete NBT, item entities or arbitrary custom geometry.
+

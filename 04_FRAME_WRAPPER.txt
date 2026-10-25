@@ -1,0 +1,1 @@
+Chronological frame {index+1} of {len(frames)} (video frame #{frame_id}). Inspect both the physical build and readable on-screen/subtitle text; quote any qualifying Light/Barrier placement instruction accurately with this video frame ID. The image follows.
