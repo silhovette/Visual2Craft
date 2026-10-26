@@ -69,12 +69,31 @@ def commit_output(temp_zip: str, destination: str, expected_snapshot):
 def generation_worker(params: dict, messages):
     """Top-level entrypoint required by Windows multiprocessing spawn."""
     try:
-        from video2pack import run
+        import video2pack
+        run = video2pack.run
         params = dict(params)
         if params.get('auth_mode') == 'chatgpt':
             from chatgpt_auth import ChatGPTAuth
             params['access_token'] = ChatGPTAuth().access_token()
-        summary = run(**params, progress=lambda message: messages.put(('progress', message)))
+        # Keep the archived core's public API and source contract unchanged.
+        # Wrapping its compiler lets us publish the exact validated scene only
+        # after the same plan has successfully produced the ZIP.
+        published_scene = None
+        original_compile = video2pack.compile_datapack
+        def compile_and_publish(scene, output, offset=(5, 0, 5)):
+            nonlocal published_scene
+            summary = original_compile(scene, output, offset=offset)
+            published_scene = scene
+            return summary
+        video2pack.compile_datapack = compile_and_publish
+        summary = run(**params,
+                      progress=lambda message: messages.put(('progress', message)))
+        if published_scene is not None:
+            # Keep the Scene payload attached to the terminal result. A large
+            # multiprocessing payload can otherwise overtake a preceding
+            # queue item while its feeder thread is still serializing it.
+            summary = dict(summary)
+            summary['_live_scene'] = published_scene
         messages.put(('result', summary))
     except BaseException as exc:
         messages.put(('error', f'{type(exc).__name__}: {exc}'))

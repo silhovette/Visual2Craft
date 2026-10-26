@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class UIContractTests(unittest.TestCase):
     def test_original_core_is_exactly_pinned(self):
         hashes = {
-            'video2pack.py': '37412d8afaa275d764d0a9789a0fd579ab66763f6c90273359deff89a29fad5a',
+            'video2pack.py': 'ffd714583e1b6ae001aa3f153efac666a84598e509f26d3afd7b342676c47ca0',
             'block_rules.py': 'f3deac3daa677fca9bd6b51ae13a8c3918ae63165b3d3197797afba1e867c69e',
             'chatgpt_auth.py': 'efc92ecd2fa0b300c4085b64b29cf6458c882a3c165be6859d9d17256a295c0e',
         }

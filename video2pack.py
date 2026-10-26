@@ -422,13 +422,17 @@ def make_commands(scene: dict[str, Any], *, plan=None) -> list[str]:
 
 
 def make_undo_commands(scene: dict[str, Any], *, plan=None) -> list[str]:
-    """Remove placed block types inside each operation's footprint.
+    """Undo placed blocks, leaving the layer below the base as grass.
 
-    This is a destructive *removal*, not a world snapshot. It cannot restore
-    terrain/blocks that were overwritten by the build.
+    Blocks at local ``base_y - 1`` (the player's standing block) are replaced
+    with grass so the generated building's footprint remains visible. Other
+    placed blocks are removed.
+    This is still a destructive operation, not a world snapshot; it cannot
+    restore terrain/blocks that were overwritten by the build.
     """
     plan = prepare_plan(validate_scene(scene)['ops'], MAX_COMMANDS) if plan is None else plan
     base_y = int(scene.get('base_y', 0))
+    grass_y = base_y - 1
     commands = []
     # Remove sources/waterlogged hosts before opening their container walls.
     for op in sorted(reversed(plan), key=lambda item: not has_water(item['block'])):
@@ -438,17 +442,32 @@ def make_undo_commands(scene: dict[str, Any], *, plan=None) -> list[str]:
         # Ignore states when matching to tolerate automatic stair/door updates.
         block_id = block.split("[", 1)[0]
         for a, b in split_fill(tuple(op["from"]), tuple(op["to"])):
-            ay, by = a[1] - base_y, b[1] - base_y
-            if a == b:
-                commands.append(
-                    f"execute if block ~{a[0]} ~{ay} ~{a[2]} {block_id} "
-                    f"run setblock ~{a[0]} ~{ay} ~{a[2]} minecraft:air strict"
-                )
+            # A fill may span the standing-block layer. Split it first so only the
+            # local ``base_y - 1`` slice is left as grass.
+            regions = []
+            if b[1] < grass_y or a[1] > grass_y:
+                regions.append((a, b, "minecraft:air"))
             else:
-                commands.append(
-                    f"fill ~{a[0]} ~{ay} ~{a[2]} ~{b[0]} ~{by} ~{b[2]} "
-                    f"minecraft:air replace {block_id} strict"
-                )
+                if a[1] < grass_y:
+                    regions.append((a, (b[0], grass_y - 1, b[2]), "minecraft:air"))
+                regions.append(((a[0], grass_y, a[2]),
+                                (b[0], grass_y, b[2]),
+                                "minecraft:grass_block"))
+                if b[1] > grass_y:
+                    regions.append(((a[0], grass_y + 1, a[2]), b, "minecraft:air"))
+
+            for region_a, region_b, replacement in regions:
+                ay, by = region_a[1] - base_y, region_b[1] - base_y
+                if region_a == region_b:
+                    commands.append(
+                        f"execute if block ~{region_a[0]} ~{ay} ~{region_a[2]} {block_id} "
+                        f"run setblock ~{region_a[0]} ~{ay} ~{region_a[2]} {replacement} strict"
+                    )
+                else:
+                    commands.append(
+                        f"fill ~{region_a[0]} ~{ay} ~{region_a[2]} ~{region_b[0]} ~{by} ~{region_b[2]} "
+                        f"{replacement} replace {block_id} strict"
+                    )
     if len(commands) > MAX_COMMANDS:
         raise ValueError("Too many undo commands for this MVP")
     return commands
@@ -526,7 +545,6 @@ def compile_datapack(scene: dict[str, Any], output: Path, offset: tuple[int, int
     commit_undo = (
         'function vidbuild:parts/undo_all\n'
         'data remove storage vidbuild:history last\n'
-        'tellraw @s {"text":"Build removed. Previously overwritten terrain was NOT restored.","color":"green"}\n'
     )
 
     base = f"data/{NAMESPACE}/function"

@@ -35,7 +35,9 @@ class PackTests(unittest.TestCase):
                 self.assertIn("with storage vidbuild:history last", undo)
                 macro = z.read(PREFIX + "internal/undo_from_saved_origin.mcfunction").decode()
                 self.assertIn("$execute in $(dimension) positioned $(x) $(y) $(z)", macro)
-                self.assertIn("data remove storage vidbuild:history last", z.read(PREFIX + "internal/commit_undo.mcfunction").decode())
+                commit_undo = z.read(PREFIX + "internal/commit_undo.mcfunction").decode()
+                self.assertIn("data remove storage vidbuild:history last", commit_undo)
+                self.assertNotIn("tellraw", commit_undo)
                 for path in names:
                     if path.endswith(".mcfunction"):
                         for line in z.read(path).decode().splitlines():
@@ -49,7 +51,7 @@ class PackTests(unittest.TestCase):
         self.assertTrue(all((b[0]-a[0]+1)*(b[1]-a[1]+1)*(b[2]-a[2]+1)<=4096 for a,b in cuboids))
 
     def test_undo_filters_and_does_not_clear_full_volume(self):
-        scene = {"name":"tiny", "size":[4,4,4], "ops":[
+        scene = {"name":"tiny", "size":[4,4,4], "base_y":1, "ops":[
             {"block":"minecraft:oak_stairs[facing=north]","from":[0,0,0],"to":[0,0,0]},
             {"block":"minecraft:glass","from":[2,2,2],"to":[3,2,2]},
             {"block":"minecraft:air","from":[1,1,1],"to":[1,1,1]},
@@ -57,7 +59,17 @@ class PackTests(unittest.TestCase):
         lines = make_undo_commands(validate_scene(scene))
         self.assertEqual(len(lines), 2)
         self.assertIn("minecraft:air replace minecraft:glass", lines[0])
-        self.assertIn("if block ~0 ~0 ~0 minecraft:oak_stairs", lines[1])
+        self.assertIn("if block ~0 ~-1 ~0 minecraft:oak_stairs", lines[1])
+        self.assertIn("run setblock ~0 ~-1 ~0 minecraft:grass_block", lines[1])
+
+    def test_undo_keeps_only_standing_block_layer_as_grass(self):
+        scene = {"name":"base layer", "size":[4,4,4], "base_y":1, "ops":[
+            {"block":"minecraft:stone","from":[0,0,0],"to":[1,2,0]},
+        ]}
+        lines = make_undo_commands(validate_scene(scene))
+        self.assertEqual(len(lines), 2)
+        self.assertIn("minecraft:grass_block replace minecraft:stone", lines[0])
+        self.assertIn("minecraft:air replace minecraft:stone", lines[1])
 
     def test_reject_scene_out_of_bounds(self):
         invalid={"name":"bad","size":[2,2,2],"ops":[{"block":"minecraft:stone","from":[0,0,0],"to":[8,0,0]}]}

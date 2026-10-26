@@ -10,14 +10,28 @@ ApplicationWindow {
     height: 895
     minimumWidth: 1060
     minimumHeight: 690
-    visible: true
+    // The Python launcher shows the window only after the QML scene exists.
+    // This prevents the native window from exposing its default white frame.
+    visible: false
     title: "Visual2Craft"
-    color: "#080D15"
+    color: "#000000"
     font.family: "Segoe UI"
 
     property string provider: "chatgpt"
+    property string previewMode: "source"
     property color white: "#F1F5FA"
     property color muted: "#A2B0C1"
+    property bool splashActive: true
+
+    function skipSplash() {
+        if (!splashActive) return
+        splashAnimation.stop()
+        splashLogo.opacity = 0
+        splashLogo.scale = 1
+        splashOverlay.opacity = 0
+        splashOverlay.visible = false
+        splashActive = false
+    }
 
     Image {
         id: scenery
@@ -29,6 +43,84 @@ ApplicationWindow {
         cache: true
     }
     Rectangle { anchors.fill: parent; color: "#85070C15" }
+
+    // Keep the finished studio underneath the splash while its first frame settles.
+    // The local logo is loaded synchronously so the fade never starts on an empty frame.
+    Rectangle {
+        id: splashOverlay
+        z: 2000
+        anchors.fill: parent
+        color: "#000000"
+        opacity: 1
+        visible: opacity > 0
+
+        Image {
+            id: splashLogo
+            anchors.centerIn: parent
+            width: Math.min(parent.width * 0.68, 760)
+            height: Math.min(parent.height * 0.24, 210)
+            source: "../assets/logo.png"
+            fillMode: Image.PreserveAspectFit
+            smooth: true
+            mipmap: true
+            opacity: 0
+            scale: 0.965
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            enabled: window.splashActive
+            hoverEnabled: false
+            onClicked: mouse.accepted = true
+        }
+
+        SequentialAnimation {
+            id: splashAnimation
+            running: true
+
+            PauseAnimation { duration: 180 }
+            ParallelAnimation {
+                NumberAnimation {
+                    target: splashLogo
+                    property: "opacity"
+                    to: 1
+                    duration: 620
+                    easing.type: Easing.OutCubic
+                }
+                NumberAnimation {
+                    target: splashLogo
+                    property: "scale"
+                    to: 1
+                    duration: 760
+                    easing.type: Easing.OutCubic
+                }
+            }
+            // Hold the fully visible logo before the shared fade-out begins.
+            PauseAnimation { duration: 1120 }
+            ParallelAnimation {
+                NumberAnimation {
+                    target: splashLogo
+                    property: "opacity"
+                    to: 0
+                    duration: 560
+                    easing.type: Easing.InOutCubic
+                }
+                NumberAnimation {
+                    target: splashOverlay
+                    property: "opacity"
+                    to: 0
+                    duration: 720
+                    easing.type: Easing.InOutCubic
+                }
+            }
+            ScriptAction {
+                script: {
+                    window.splashActive = false
+                    splashOverlay.visible = false
+                }
+            }
+        }
+    }
 
     RowLayout {
         id: mainLayout
@@ -263,61 +355,119 @@ ApplicationWindow {
                         clip: true
                         z: 0
 
-                        MediaPlayer {
-                            id: player
-                            source: studio.videoUrl
-                            videoOutput: screen
-                            audioOutput: AudioOutput { muted: true }
-                            onSourceChanged: {
-                                if (studio.hasVideo) play()
-                                else stop()
-                            }
-                        }
-                        VideoOutput {
-                            id: screen
+                        Item {
+                            id: sourcePreview
                             anchors.fill: parent
-                            anchors.margins: 2
-                            visible: studio.hasVideo
-                            fillMode: VideoOutput.PreserveAspectCrop
-                        }
+                            opacity: window.previewMode === "source" ? 1 : 0
+                            visible: opacity > 0
+                            Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.InOutCubic } }
 
-                        Column {
-                            visible: !studio.hasVideo
-                            anchors.centerIn: parent
-                            width: Math.min(parent.width - 30, 400)
-                            spacing: 10
-                            Text {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                text: "Drop in a building tutorial"
-                                color: "#F0F4F9"
-                                font.pixelSize: 17
-                                font.weight: Font.DemiBold
+                            MediaPlayer {
+                                id: player
+                                source: studio.videoUrl
+                                videoOutput: screen
+                                audioOutput: AudioOutput { muted: true }
+                                onSourceChanged: {
+                                    if (studio.hasVideo) play()
+                                    else stop()
+                                }
                             }
-                            Text {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                text: "MP4  ·  MOV  ·  MKV  ·  AVI  ·  WEBM"
-                                color: "#A2B4C8"
-                                font.pixelSize: 11
+                            VideoOutput {
+                                id: screen
+                                anchors.fill: parent
+                                anchors.margins: 2
+                                visible: studio.hasVideo
+                                fillMode: VideoOutput.PreserveAspectCrop
                             }
-                            StudioButton {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                text: "Browse video"
-                                primary: true
-                                small: true
-                                enabled: studio.canBrowseVideo
-                                onClicked: studio.browseVideo()
-                            }
-                        }
 
-                        DropArea {
-                            anchors.fill: parent
-                            onDropped: function(drop) {
-                                if (drop.hasUrls && drop.urls.length > 0 && studio.canBrowseVideo) {
-                                    studio.importVideoUrl(drop.urls[0].toString())
-                                    drop.acceptProposedAction()
+                            Column {
+                                visible: !studio.hasVideo
+                                anchors.centerIn: parent
+                                width: Math.min(parent.width - 30, 400)
+                                spacing: 10
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: "Drop in a building tutorial"
+                                    color: "#F0F4F9"
+                                    font.pixelSize: 17
+                                    font.weight: Font.DemiBold
+                                }
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: "MP4  ·  MOV  ·  MKV  ·  AVI  ·  WEBM"
+                                    color: "#A2B4C8"
+                                    font.pixelSize: 11
+                                }
+                                StudioButton {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: "Browse video"
+                                    primary: true
+                                    small: true
+                                    enabled: studio.canBrowseVideo
+                                    onClicked: studio.browseVideo()
+                                }
+                            }
+
+                            DropArea {
+                                anchors.fill: parent
+                                onDropped: function(drop) {
+                                    if (drop.hasUrls && drop.urls.length > 0 && studio.canBrowseVideo) {
+                                        studio.importVideoUrl(drop.urls[0].toString())
+                                        drop.acceptProposedAction()
+                                    }
                                 }
                             }
                         }
+
+                        // Qt Quick 3D is the heaviest part of the scene. Keep the
+                        // component unloaded until it is requested, then retain it
+                        // so switching preview modes does not recreate the scene.
+                        Loader {
+                            id: livePreviewLoader
+                            anchors.fill: parent
+                            // Capture context properties on the Loader so the
+                            // inline component does not resolve them against
+                            // its own scope when it is created lazily.
+                            property var studioBridge: studio
+                            property var geometryObject: blockGeometry
+                            active: window.previewMode === "live" || item !== null
+                            opacity: window.previewMode === "live" ? 1 : 0
+                            visible: opacity > 0
+                            Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.InOutCubic } }
+                            sourceComponent: LiveReconstruction {
+                                anchors.fill: parent
+                                studio: livePreviewLoader.studioBridge
+                                blockGeometry: livePreviewLoader.geometryObject
+                            }
+                        }
+
+                        Row {
+                            id: previewModeSwitch
+                            anchors.top: parent.top
+                            anchors.right: parent.right
+                            anchors.topMargin: 11
+                            anchors.rightMargin: 13
+                            spacing: 4
+                            z: 5
+                            Repeater {
+                                model: ["Source Video", "Live Reconstruction"]
+                                delegate: Rectangle {
+                                    required property string modelData
+                                    width: modelData === "Source Video" ? 82 : 112
+                                    height: 25
+                                    radius: 8
+                                    color: window.previewMode === (modelData === "Source Video" ? "source" : "live") ? "#526B82" : "#B0101723"
+                                    border.width: 1
+                                    border.color: "#506477"
+                                    Text { anchors.centerIn: parent; text: modelData; color: "#E3ECF5"; font.pixelSize: 10 }
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        onClicked: window.previewMode = modelData === "Source Video" ? "source" : "live"
+                                    }
+                                }
+                            }
+                        }
+
                     }
 
                     Rectangle {
@@ -332,6 +482,7 @@ ApplicationWindow {
                         radius: 10
                         color: "#C4101723"
                         z: 1
+                        visible: window.previewMode === "source"
                     }
                     RowLayout {
                         id: pathControls
@@ -342,6 +493,7 @@ ApplicationWindow {
                         anchors.rightMargin: 10
                         spacing: 7
                         z: 2
+                        visible: window.previewMode === "source"
                         Text {
                             Layout.fillWidth: true
                             text: studio.hasVideo ? studio.videoPath : "No source selected yet"
@@ -387,6 +539,7 @@ ApplicationWindow {
                         border.width: 1
                         border.color: "#263A4A5D"
                         z: 1
+                        visible: window.previewMode === "source"
                         RowLayout {
                             anchors.fill: parent
                             anchors.leftMargin: 8
@@ -617,7 +770,6 @@ ApplicationWindow {
                     StudioButton {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 47
-                        primary: !studio.generating
                         danger: studio.generating
                         text: studio.generating ? "Cancel generation" : "Generate Data Pack"
                         glyph: studio.generating ? "×" : "→"
@@ -628,6 +780,7 @@ ApplicationWindow {
                                 studio.generate(window.provider, modelCombo.currentIndex,
                                     apiModelField.text, apiKeyField.text,
                                     Number(frameField.text), hintsField.text, outputField.text)
+                                if (studio.generating) window.previewMode = "live"
                             }
                         }
                     }
@@ -703,4 +856,10 @@ ApplicationWindow {
     }
     Shortcut { sequence: "Ctrl+O"; onActivated: studio.browseVideo() }
     Shortcut { sequence: "Ctrl+S"; onActivated: studio.browseOutput() }
+    Shortcut {
+        sequence: "Space"
+        context: Qt.ApplicationShortcut
+        enabled: window.splashActive
+        onActivated: window.skipSplash()
+    }
 }

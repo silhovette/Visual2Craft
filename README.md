@@ -2,7 +2,7 @@
 
 **From Construction Videos to Executable Minecraft Builds**
 
-This edition migrates the **desktop frontend** from Tkinter to **PySide6 + Qt Quick / QML**. Its reconstruction backend is taken **verbatim** from the archived `Visual2Craft-9f035beef44a4bcf76efa446946aac75cba87e9f.zip` you provided.
+This edition migrates the **desktop frontend** from Tkinter to **PySide6 + Qt Quick / QML**. Its reconstruction backend is based on the archived `Visual2Craft-9f035beef44a4bcf76efa446946aac75cba87e9f.zip` you provided, with the documented standing-block grass behavior in undo.
 
 - **Source of inference and rendering semantics:** old `video2pack.py`, `block_rules.py`, `chatgpt_auth.py`, `examples/`.
 - **Visual reference only:** `main`'s `assets/logo.png` and `assets/scenery_2560.jpg`; reconstruction uses the reviewed Prompt Engineering v2.0 assets shipped beside `video2pack.py`.
@@ -24,7 +24,7 @@ This edition migrates the **desktop frontend** from Tkinter to **PySide6 + Qt Qu
 /function vidbuild:undo
 ```
 
-`/function vidbuild:undo` removes only the generated blocks; it does **not** restore overwritten terrain. Back up the Minecraft world.
+`/function vidbuild:undo` removes generated blocks except for the layer at `base_y - 1` (the player's standing block), where matching generated blocks are replaced with grass; it does **not** restore overwritten terrain. Back up the Minecraft world.
 
 The first launch requires an internet connection to install dependencies; ChatGPT/OAuth inference also needs network access. Qt Multimedia preview depends on playable codecs on the target system. If the preview reports an unsupported format, try an H.264 MP4; this does not affect `video2pack.py`'s OpenCV frame extraction.
 

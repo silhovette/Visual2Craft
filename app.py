@@ -23,10 +23,17 @@ def _dark_windows_caption(qt_window):
         on = ctypes.c_int(1)
         dwm.DwmSetWindowAttribute(ctypes.c_void_p(hwnd), 20,
                                   ctypes.byref(on), ctypes.sizeof(on))
-        # Windows COLORREF ordering is 0x00BBGGRR.
-        caption = ctypes.c_uint(0x00120D08)
+        # Windows COLORREF ordering is 0x00BBGGRR. Keep the native titlebar
+        # black with white text while retaining the normal window frame.
+        border = ctypes.c_uint(0x00000000)
+        dwm.DwmSetWindowAttribute(ctypes.c_void_p(hwnd), 34,
+                                  ctypes.byref(border), ctypes.sizeof(border))
+        caption = ctypes.c_uint(0x00000000)
         dwm.DwmSetWindowAttribute(ctypes.c_void_p(hwnd), 35,
                                   ctypes.byref(caption), ctypes.sizeof(caption))
+        text = ctypes.c_uint(0x00FFFFFF)
+        dwm.DwmSetWindowAttribute(ctypes.c_void_p(hwnd), 36,
+                                  ctypes.byref(text), ctypes.sizeof(text))
     except (AttributeError, OSError, ValueError):
         pass
 
@@ -38,8 +45,13 @@ def main(argv=None):
     parser.add_argument('--check-ui', action='store_true', help='Load and validate QML, then exit (no model request)')
     options = parser.parse_args(argv)
 
+    # The Windows native style ignores custom QML background/content delegates,
+    # which makes hovered/focused buttons fall back to the bright system palette.
+    # Use a delegate-based style so StudioButton owns every interaction color.
+    os.environ.setdefault('QT_QUICK_CONTROLS_STYLE', 'Basic')
     try:
-        from PySide6.QtCore import QCoreApplication, QUrl
+        from PySide6.QtCore import QCoreApplication, QTimer, QUrl
+        from PySide6.QtGui import QColor, QPalette
         from PySide6.QtQml import QQmlApplicationEngine
     except ImportError as exc:
         raise SystemExit('PySide6 is missing. Run START_WINDOWS.bat or: python -m pip install -r requirements.txt') from exc
@@ -53,9 +65,18 @@ def main(argv=None):
     QCoreApplication.setApplicationName('Visual2Craft')
     app = QApplication(sys.argv[:1])
     app.setApplicationDisplayName('Visual2Craft')
+    # Set the native Qt palette before any window is created.  Without this,
+    # Windows can briefly paint the hidden QQuickWindow with its default white
+    # palette while the first black QML frame is being composed.
+    palette = app.palette()
+    palette.setColor(QPalette.ColorRole.Window, QColor('#000000'))
+    palette.setColor(QPalette.ColorRole.Base, QColor('#000000'))
+    palette.setColor(QPalette.ColorRole.AlternateBase, QColor('#000000'))
+    app.setPalette(palette)
     bridge = StudioBridge(video=options.video, output=options.out)
     engine = QQmlApplicationEngine()
     engine.rootContext().setContextProperty('studio', bridge)
+    engine.rootContext().setContextProperty('blockGeometry', bridge.blockGeometry)
     qml = Path(__file__).resolve().parent / 'qml' / 'Main.qml'
     errors = []
     engine.warnings.connect(lambda warnings: errors.extend(map(str, warnings)))
@@ -66,9 +87,16 @@ def main(argv=None):
         raise SystemExit('Unable to initialize Qt Quick window; see QML errors above.')
     app.aboutToQuit.connect(bridge.shutdown)
     if not options.check_ui:
-        _dark_windows_caption(engine.rootObjects()[0])
-        if os.name == 'nt':
-            engine.rootObjects()[0].showMaximized()
+        window = engine.rootObjects()[0]
+        window.setColor(QColor('#000000'))
+        # Keep the native surface invisible until the compositor has produced
+        # its first frame. The QML splash is already black during this handoff.
+        window.setOpacity(0.0)
+        _dark_windows_caption(window)
+        # Maximize the normal framed window while hidden, then expose the first
+        # frame once. This keeps the titlebar and avoids opening as a small window.
+        window.showMaximized()
+        QTimer.singleShot(50, lambda: window.setOpacity(1.0))
     if options.check_ui:
         print('Qt Quick QML loaded successfully')
         bridge.shutdown()

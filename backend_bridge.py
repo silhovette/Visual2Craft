@@ -21,6 +21,7 @@ from chatgpt_auth import ChatGPTAuth
 from generation_runtime import (available_output, commit_output, generation_worker,
                                 output_snapshot, validate_output_path)
 from video2pack import DEFAULT_FRAMES, MAX_FRAMES
+from live_scene import BlockGeometry, MAX_RENDER_BLOCKS, scene_blocks
 
 GAME_COMMANDS = ('/reload', '/function vidbuild:check', '/function vidbuild:build', '/function vidbuild:undo')
 
@@ -35,6 +36,8 @@ class StudioBridge(QObject):
     stageChanged = Signal()
     elapsedChanged = Signal()
     resultChanged = Signal()
+    sceneChanged = Signal()
+    sceneStatusChanged = Signal()
     toast = Signal(str)
     # Emitting from worker threads transfers payloads to the Qt GUI thread.
     _backgroundFinished = Signal(object)
@@ -69,6 +72,16 @@ class StudioBridge(QObject):
         self._received_terminal = False
         self._empty_polls = 0
         self._closing = False
+        self._scene_status = 'Waiting for a validated building scene.'
+        self._scene_version = 0
+        self._block_count = 0
+        self._entity_count = 0
+        self._geometry = BlockGeometry(self)
+        self._animation_items = []
+        self._animation_blocks = {}
+        self._animation_timer = QTimer(self)
+        self._animation_timer.setInterval(24)
+        self._animation_timer.timeout.connect(self._animate_scene_batch)
         self._backgroundFinished.connect(self._on_background_finished)
         self._poll_timer = QTimer(self)
         self._poll_timer.setInterval(100)
@@ -149,6 +162,26 @@ class StudioBridge(QObject):
     def resultPath(self):
         return self._result_path
 
+    @Property(QObject, constant=True)
+    def blockGeometry(self):
+        return self._geometry
+
+    @Property(int, notify=sceneChanged)
+    def sceneVersion(self):
+        return self._scene_version
+
+    @Property(int, notify=sceneChanged)
+    def blockCount(self):
+        return self._block_count
+
+    @Property(int, notify=sceneChanged)
+    def entityCount(self):
+        return self._entity_count
+
+    @Property(str, notify=sceneStatusChanged)
+    def sceneStatus(self):
+        return self._scene_status
+
     @Property(str, constant=True)
     def maxFrames(self):
         return str(MAX_FRAMES)
@@ -177,6 +210,72 @@ class StudioBridge(QObject):
         else:
             self._elapsed_timer.stop()
 
+    def _set_scene_status(self, status: str):
+        status = str(status)
+        if self._scene_status != status:
+            self._scene_status = status
+            self.sceneStatusChanged.emit()
+
+    def _clear_scene(self, status: str = 'No confirmed structure yet. The live scene is empty.'):
+        self._animation_timer.stop()
+        self._animation_items = []
+        self._animation_blocks = {}
+        self._geometry.update_blocks({})
+        self._block_count = 0
+        self._entity_count = 0
+        self._scene_version += 1
+        self._set_scene_status(status)
+        self.sceneChanged.emit()
+
+    def _apply_scene(self, scene: dict[str, Any]):
+        """Apply only a validated, compiler-ready scene in the GUI thread."""
+        if self._closing:
+            return
+        try:
+            blocks = scene_blocks(scene, limit=MAX_RENDER_BLOCKS)
+        except Exception as exc:
+            self._clear_scene(f'Live preview unavailable: {exc}')
+            return
+        self._animation_timer.stop()
+        # The model supplied one validated final scene. Reveal that real
+        # structure in deterministic, bounded batches; no coordinates are
+        # invented while the model is still producing JSON.
+        self._animation_items = sorted(blocks.items(), key=lambda item: (item[0][1], item[0][2], item[0][0]))
+        self._animation_blocks = {}
+        self._geometry.update_blocks({})
+        self._block_count = 0
+        self._entity_count = len(scene.get('entities', []))
+        self._scene_version += 1
+        special = sum(1 for op in scene.get('ops', [])
+                      if op.get('action') == 'place' and op.get('confidence') == 'confirmed'
+                      and str(op.get('block', '')).split('[', 1)[0]
+                      in ('minecraft:light', 'minecraft:barrier', 'minecraft:structure_void'))
+        note = f' · {self._entity_count} entities held as datapack-only data' if self._entity_count else ''
+        if special:
+            note += f' · {special} special blocks'
+        self._set_scene_status(f'Building validated scene · 0/{len(blocks):,} blocks{note}')
+        self.sceneChanged.emit()
+        if self._animation_items:
+            self._animation_timer.start()
+
+    def _animate_scene_batch(self):
+        if not self._animation_items:
+            self._animation_timer.stop()
+            return
+        batch_size = max(256, min(4_000, max(1, len(self._animation_items) // 28)))
+        for point, block in self._animation_items[:batch_size]:
+            self._animation_blocks[point] = block
+        del self._animation_items[:batch_size]
+        self._geometry.update_blocks(self._animation_blocks)
+        self._block_count = len(self._animation_blocks)
+        self._scene_version += 1
+        if self._animation_items:
+            self._set_scene_status(f'Building validated scene · {self._block_count:,} blocks…')
+        else:
+            self._animation_timer.stop()
+            self._set_scene_status(f'Validated scene · {self._block_count:,} visible blocks')
+        self.sceneChanged.emit()
+
     def _tick_elapsed(self):
         seconds = int(time.monotonic() - self._started_at)
         if seconds != self._elapsed:
@@ -202,6 +301,7 @@ class StudioBridge(QObject):
             return
         self._video = str(candidate.absolute())
         self.videoChanged.emit()
+        self._clear_scene('Ready to construct; the live scene is empty.')
         if self._auto_output:
             self._output = available_output(self._video, Path(self._output).parent)
             self.outputChanged.emit()
@@ -219,6 +319,7 @@ class StudioBridge(QObject):
             return
         self._video = ''
         self.videoChanged.emit()
+        self._clear_scene()
         self._set_status('Video cleared. Choose a new construction video.')
         self._set_stage('IDLE')
 
@@ -413,6 +514,7 @@ class StudioBridge(QObject):
             self._empty_polls = 0
             self._result_path = ''
             self.resultChanged.emit()
+            self._clear_scene('Analyzing video; waiting for the first validated scene…')
             self._set_busy('generate')
             self._set_stage('SAMPLING')
             self._set_status('Sampling and filtering frames locally…')
@@ -438,6 +540,10 @@ class StudioBridge(QObject):
                 elif 'Writing Data Pack' in value:
                     self._set_stage('EXPORTING')
                 self._set_status(value)
+                if 'Receiving building scene' in value:
+                    self._set_scene_status('Receiving model scene; waiting for complete validated structure…')
+            elif kind == 'scene':
+                self._apply_scene(value)
             elif kind == 'result':
                 self._received_terminal = True
                 self._finish_success(value)
@@ -459,6 +565,9 @@ class StudioBridge(QObject):
         except Exception as exc:
             self._finish_failure(str(exc))
             return
+        live_scene = summary.get('_live_scene')
+        if isinstance(live_scene, dict):
+            self._apply_scene(live_scene)
         self._last_summary = summary
         self._result_path = saved
         self.resultChanged.emit()
@@ -472,6 +581,7 @@ class StudioBridge(QObject):
 
     def _finish_failure(self, message):
         self._cleanup_generation()
+        self._clear_scene('Generation failed; no validated building is available.')
         self._set_stage('FAILED')
         self._set_status('Generation failed. The original output ZIP was not modified.')
         self._show_error('Generation failed', message)
@@ -482,6 +592,7 @@ class StudioBridge(QObject):
             return
         # Qt/UI is not blocked waiting for model API completion.
         self._cleanup_generation()
+        self._clear_scene('Generation canceled; no live structure is retained.')
         self._set_stage('CANCELED')
         self._set_status('Generation canceled; temporary output removed. Submitted API usage may still count.')
         self.toast.emit('Generation canceled')

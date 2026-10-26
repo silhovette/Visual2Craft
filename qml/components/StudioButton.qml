@@ -19,10 +19,10 @@ Button {
         color: !control.enabled ? "#29303B" :
                control.down ? (control.primary ? "#C4CBD4" :
                                control.danger ? "#6A343D" : "#475361") :
-               control.primary ? (control.hovered ? "#FFFFFF" : "#E4E9F0") :
-               control.danger ? (control.hovered ? "#593036" : "#44252C") :
-               control.quiet ? (control.hovered ? "#4A515C" : "#303740") :
-               (control.hovered ? "#44505E" : "#313B48")
+               control.primary ? (control.hovered ? "#BFC9D5" : "#E4E9F0") :
+               control.danger ? (control.hovered ? "#4E2C34" : "#44252C") :
+               control.quiet ? (control.hovered ? "#414852" : "#303740") :
+               (control.hovered ? "#3B4654" : "#313B48")
         opacity: control.enabled ? 1 : 0.52
         Behavior on color { ColorAnimation { duration: 145; easing.type: Easing.OutCubic } }
     }
