@@ -16,10 +16,11 @@ DIRECTIONS = {'north': (0, 0, -1), 'south': (0, 0, 1),
               'east': (1, 0, 0), 'west': (-1, 0, 0)}
 
 try:
-    BLOCK_KNOWLEDGE = Path(__file__).with_name("02_BLOCK_KNOWLEDGE.txt").read_text(
+    BLOCK_KNOWLEDGE = (Path(__file__).resolve().parents[1] / "prompts" /
+                       "02_BLOCK_KNOWLEDGE.txt").read_text(
         encoding="utf-8").strip()
 except OSError as exc:  # pragma: no cover - packaging failure, not model logic
-    raise RuntimeError("Missing prompt asset: 02_BLOCK_KNOWLEDGE.txt") from exc
+    raise RuntimeError("Missing prompt asset: prompts/02_BLOCK_KNOWLEDGE.txt") from exc
 
 
 def split_block(block):

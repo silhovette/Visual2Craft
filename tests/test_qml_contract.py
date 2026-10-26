@@ -13,9 +13,9 @@ ROOT = Path(__file__).resolve().parents[1]
 class UIContractTests(unittest.TestCase):
     def test_original_core_is_exactly_pinned(self):
         hashes = {
-            'video2pack.py': 'ffd714583e1b6ae001aa3f153efac666a84598e509f26d3afd7b342676c47ca0',
-            'block_rules.py': 'f3deac3daa677fca9bd6b51ae13a8c3918ae63165b3d3197797afba1e867c69e',
-            'chatgpt_auth.py': 'efc92ecd2fa0b300c4085b64b29cf6458c882a3c165be6859d9d17256a295c0e',
+            'core/video2pack.py': '1026822f261451a8b43e939fe34996feb0517c4cd9817f9cacb57d8cb25fdc4f',
+            'core/block_rules.py': '3ebcb319595789a068c64acaefaaa9dd7f693c404eb35bf7f5adf01d6fd79ff5',
+            'core/chatgpt_auth.py': 'efc92ecd2fa0b300c4085b64b29cf6458c882a3c165be6859d9d17256a295c0e',
         }
         for filename, sha in hashes.items():
             with self.subTest(filename=filename):
@@ -27,8 +27,8 @@ class UIContractTests(unittest.TestCase):
                          'qml/components/StudioCombo.qml', 'assets/logo.png',
                          'assets/scenery_2560.jpg']:
             self.assertTrue((ROOT / relative).is_file(), relative)
-        for name in ('app.py', 'backend_bridge.py', 'generation_runtime.py'):
-            tree = ast.parse((ROOT / name).read_text())
+        for name in ('app.py', 'core/backend_bridge.py', 'core/generation_runtime.py'):
+            tree = ast.parse((ROOT / name).read_text(encoding='utf-8'))
             imports = [n.names[0].name for n in ast.walk(tree) if isinstance(n, ast.Import)]
             self.assertNotIn('tkinter', imports)
 

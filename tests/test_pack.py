@@ -4,7 +4,7 @@ from pathlib import Path
 import unittest
 import zipfile
 
-from video2pack import compile_datapack, validate_scene, split_fill, make_undo_commands
+from core.video2pack import compile_datapack, validate_scene, split_fill, make_undo_commands
 
 ROOT = Path(__file__).resolve().parents[1]
 PREFIX = "data/vidbuild/function/"

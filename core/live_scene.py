@@ -12,7 +12,7 @@ import math
 import struct
 from typing import Any
 
-from block_rules import prepare_plan, split_block
+from .block_rules import prepare_plan, split_block
 
 try:  # The pure scene store remains importable without Qt in unit tests.
     from PySide6.QtCore import QByteArray, Property, Signal
@@ -54,7 +54,7 @@ def scene_blocks(scene: dict[str, Any], *, limit: int = MAX_RENDER_BLOCKS) -> di
     # Offline example scenes use the legacy compact operation shape. Normalize
     # that shape through the authoritative validator before resolving it.
     if any("action" not in op for op in scene.get("ops", []) if isinstance(op, dict)):
-        from video2pack import validate_scene
+        from .video2pack import validate_scene
         scene = validate_scene(scene)
     plan = prepare_plan(scene.get("ops", []), max(limit, 50_000))
     blocks: dict[tuple[int, int, int], str] = {}

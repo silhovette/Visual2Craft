@@ -8,7 +8,7 @@ from unittest.mock import patch
 from urllib.parse import urlparse, parse_qs, urlencode
 from urllib.request import urlopen
 
-from chatgpt_auth import ChatGPTAuth, authorization_url, pkce_challenge, SCOPES
+from core.chatgpt_auth import ChatGPTAuth, authorization_url, pkce_challenge, SCOPES
 
 class Vault:
     def __init__(self):
@@ -40,7 +40,7 @@ class AuthTests(unittest.TestCase):
                 rotated = {**record, 'refresh_token': 'new' * 1500}
                 auth._save_tokens('test-client', rotated)
                 self.assertEqual(auth._read_tokens('test-client'), rotated)
-                from chatgpt_auth import SERVICE
+                from core.chatgpt_auth import SERVICE
                 self.assertEqual(old_keys & set(vault.contents), {(SERVICE, 'test-client')})
                 auth._delete_tokens('test-client')
                 self.assertEqual(vault.contents, {})
@@ -104,7 +104,7 @@ class AuthTests(unittest.TestCase):
             tokens={'id_token':'signed-jwt-mock', 'access_token':'test-access', 'refresh_token':'test-refresh',
                     'expires_in':3600, 'scope':SCOPES}
             with (patch.object(auth, '_vault', return_value=vault),
-                  patch('chatgpt_auth.webbrowser.open', side_effect=fake_browser),
+                  patch('core.chatgpt_auth.webbrowser.open', side_effect=fake_browser),
                   patch.object(auth,'_exchange',return_value=tokens) as exchange,
                   patch.object(auth,'_validate_id_token',return_value={'sub':'subject1','email':'a@example.org'})):
                 account=auth.sign_in(timeout=4)
@@ -116,7 +116,7 @@ class AuthTests(unittest.TestCase):
                 auth_records=json.loads((Path(root)/'registrations.json').read_text())
                 self.assertNotIn('test-refresh',json.dumps(auth_records))
                 # Expire the access token to exercise refresh-token rotation.
-                from chatgpt_auth import SERVICE
+                from core.chatgpt_auth import SERVICE
                 old=json.loads(vault.get_password(SERVICE,'oaiapp_test123'))
                 old['saved_at']=0
                 vault.set_password(SERVICE,'oaiapp_test123',json.dumps(old))

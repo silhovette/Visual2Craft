@@ -7,9 +7,9 @@ import tempfile
 import unittest
 import zipfile
 
-from generation_runtime import (available_output, commit_output, generation_worker,
+from core.generation_runtime import (available_output, commit_output, generation_worker,
                                 output_snapshot, safe_filename, validate_output_path)
-from video2pack import compile_datapack
+from core.video2pack import compile_datapack
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class GenerationRuntimeTests(unittest.TestCase):
     def test_old_reconstructor_is_not_changed(self):
         # Test pins important semantics without depending on brittle source hashes.
-        from video2pack import MAX_FRAMES, DEFAULT_FRAMES
+        from core.video2pack import MAX_FRAMES, DEFAULT_FRAMES
         self.assertEqual(MAX_FRAMES, 1200)
         self.assertEqual(DEFAULT_FRAMES, 500)
         scene = json.loads((ROOT / 'examples' / 'demo_house.json').read_text())

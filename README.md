@@ -1,90 +1,184 @@
-# Visual2Craft — Qt Quick Edition
+<p align="center">
+  <img src="assets/hero.jpg" alt="Visual2Craft" width="100%">
+</p>
 
-**From Construction Videos to Executable Minecraft Builds**
+# Visual2Craft：From Construction Videos to Executable Minecraft Builds
 
-This edition migrates the **desktop frontend** from Tkinter to **PySide6 + Qt Quick / QML**. Its reconstruction backend is based on the archived `Visual2Craft-9f035beef44a4bcf76efa446946aac75cba87e9f.zip` you provided, with the documented standing-block grass behavior in undo.
+**Visual2Craft** is a desktop application that turns Minecraft building videos into executable Minecraft: Java Edition Data Packs. It samples frames from a tutorial, uses a vision-capable AI model to reconstruct the visible structure, and generates in-game commands that place the resulting blocks.
 
-- **Source of inference and rendering semantics:** old `video2pack.py`, `block_rules.py`, `chatgpt_auth.py`, `examples/`.
-- **Visual reference only:** `main`'s `assets/logo.png` and `assets/scenery_2560.jpg`; reconstruction uses the reviewed Prompt Engineering v2.0 assets shipped beside `video2pack.py`.
-- **Frontend:** `app.py`, `backend_bridge.py`, `generation_runtime.py`, `qml/Main.qml`, `qml/components/*.qml`.
+The workflow runs without training or fine-tuning a custom model. Reconstruction is approximate: results depend on video visibility, camera movement, model capabilities, and the evidence available in the selected frames.
 
-## Run on Windows 11
+## Features
 
-1. Extract the ZIP fully to a writable folder. **Do not start from inside a ZIP preview.**
-2. Install 64-bit Python **3.13** (preferred) from python.org; ensure the Windows `py` launcher is available.
-3. Double-click **`START_WINDOWS.bat`**. The script creates a local `.venv`, installs dependencies, and opens the Qt Quick window.
-4. Choose **ChatGPT Plan** and click **Sign in**, or use **API key** mode. Refresh available models and verify the exact model ID.
-5. Choose a construction video (Browse, drag-drop, or Ctrl+O), set sample frames (2–1200), and choose an output ZIP.
-6. Click **Generate Data Pack**. At completion, move the ZIP to `world/datapacks`, then run:
+- **Video-to-build workflow:** Import a construction video, choose the number of frames, and export a ready-to-install Data Pack ZIP.
+- **3D reconstruction preview:** Inspect the validated building scene in the desktop viewer alongside the source video. The scene is displayed when a complete reconstruction is available; it is not a live stream of the model's intermediate reasoning.
+- **Flexible AI connection:** Sign in with a supported ChatGPT account or provide an OpenAI API key, then select the model used for reconstruction.
+- **Evidence-aware placement:** Confirmed building operations are compiled into commands; uncertain or unsupported regions are left unchanged.
+- **Minecraft block support:** Use standard block IDs and block states, including glass, water, stairs, slabs, and supported special blocks. Explicitly supported entities can also be placed.
+- **Optional building hints:** Supply extra information about geometry, materials, or dimensions when the video alone is ambiguous.
+- **In-game build and undo:** Generate functions to check, construct, and remove a build at its saved location.
+- **Responsive desktop interface:** Qt Quick UI with video controls, model selection, generation status, command copying, and a separate generation worker.
+
+## Requirements
+
+- **Minecraft: Java Edition 26.3** for the generated Data Pack format. Compatibility with other game versions is not guaranteed.
+- **64-bit Python 3.13** recommended; the Windows launcher also looks for Python 3.12, 3.11, or 3.14.
+- Windows 11 or a Linux desktop with working Qt / Qt Multimedia support.
+- Internet access for dependency installation, account sign-in, and AI inference.
+- A compatible AI model accessible through your selected ChatGPT sign-in or OpenAI API connection.
+
+The Python dependencies are listed in [`requirements.txt`](requirements.txt). The desktop interface uses PySide6 / Qt Quick; OpenCV handles video-frame extraction.
+
+## Quick start
+
+### Windows
+
+1. Download or clone the project and extract it to a writable directory.
+2. Install 64-bit Python 3.13. Make sure the Windows `py` launcher is available.
+3. Double-click **`START_WINDOWS.bat`**. It creates a project-local `.venv`, installs dependencies, and launches Visual2Craft.
+4. In **AI Connection**, choose **ChatGPT Plan** and sign in, or choose **API key** and enter your credentials. Select a compatible model.
+5. Import a Minecraft construction video, set the frame count (2–1200; default: 500), and optionally enter building hints.
+6. Choose the destination `.zip` file and click **Generate Data Pack**.
+7. When generation completes, install the ZIP in your Minecraft world using the instructions below.
+
+Do not launch the application directly from a compressed ZIP preview; extract the project first.
+
+### Linux
+
+From the project directory:
+
+```bash
+chmod +x START_LINUX.sh
+./START_LINUX.sh
+```
+
+Alternatively, set up Python manually on either platform:
+
+```bash
+python -m venv .venv
+python -m pip install -r requirements.txt
+python app.py
+```
+
+Activate the virtual environment before running the `pip` and `python` commands in the manual setup. On Linux, use `python3` if `python` is unavailable. Qt Multimedia playback depends on the system's installed codecs.
+
+## Use the generated Data Pack
+
+1. Open the desired Minecraft world folder and find its `datapacks` directory (for a local Java world, typically `.minecraft/saves/<world>/datapacks/`).
+2. Place the generated **ZIP file** inside `datapacks`. You do not need to extract it.
+3. Open the world with commands enabled (or with operator permissions on a server).
+4. Run the following commands in Minecraft:
 
 ```mcfunction
 /reload
 /function vidbuild:check
 /function vidbuild:build
+```
+
+Run this command to remove the most recently recorded build:
+
+```mcfunction
 /function vidbuild:undo
 ```
 
-`/function vidbuild:undo` removes generated blocks except for the layer at `base_y - 1` (the player's standing block), where matching generated blocks are replaced with grass; it does **not** restore overwritten terrain. Back up the Minecraft world.
+**Important:** `undo` is not a world backup. It removes matching generated blocks, and generated blocks on the standing-ground layer are replaced with grass. It cannot restore terrain, structures, or other blocks overwritten during construction. It's recommended to back up the world before building, and remain near the structure when undoing so the relevant chunks are loaded.
 
-The first launch requires an internet connection to install dependencies; ChatGPT/OAuth inference also needs network access. Qt Multimedia preview depends on playable codecs on the target system. If the preview reports an unsupported format, try an H.264 MP4; this does not affect `video2pack.py`'s OpenCV frame extraction.
+The generated functions use the `vidbuild` namespace. The default build origin is offset from the player's position, and the Data Pack records its location for undo.
 
-## Why this is smoother
+## How it works
 
-Qt Quick renders textured background, controls, hover states, and video in a scenegraph (hardware accelerated where supported). Unlike Tkinter's Canvas/PIL design, the interface has **no repeated background screenshot/CPU blur, geometry-triggered background scaling, or full-window image reallocation**. Decorative motion is limited to short hover transitions and a single small active task indicator. The generation worker is a separate process, so long model calls do not occupy the Qt UI thread. Actual FPS still depends on GPU/graphics drivers and cannot be guaranteed without device testing.
+```mermaid
 
-The activity bar is **indeterminate**, on purpose: the original backend does not report per-frame/model-token completion percentages. It shows the true phase (`SAMPLING`, `RECONSTRUCTING`, `EXPORTING`) and elapsed time instead of pretending a fixed percentage is actual progress.
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "background": "#0b0f17",
+    "primaryColor": "#161b26",
+    "primaryTextColor": "#e8eefc",
+    "primaryBorderColor": "#5b8def",
+    "lineColor": "#5f6b7a",
+    "secondaryColor": "#1a2230",
+    "tertiaryColor": "#16202c",
+    "fontFamily": "Inter, Segoe UI, Arial, sans-serif"
+  }
+}}%%
 
-## Functional behavior
+flowchart TD
+    A(["Construction Video"])
+    B["Frame Extraction & Sampling<br/>(OpenCV)"]
+    P["Reconstruction Instructions"]
+    H["Optional Hints"]
+    C["Vision Model"]
+    D["Structured Scene<br/>Blocks · Geometry · Evidence · Entities"]
+    E["Scene Validation<br/>& Block-Operation Planning"]
+    F[/"Minecraft Data Pack · ZIP"/]
+    G["3D Scene Preview"]
+    I(["Minecraft<br/>/reload → /function vidbuild:build"])
 
-- Video preview: hardware-capable Qt Multimedia backend, play/pause, seek, change, clear.
-- Multi-account ChatGPT sign-in: existing `ChatGPTAuth` and OS keyring; add/remove/select accounts and fetch server-listed models. Account credentials are **not stored in QML**.
-- API mode: separately billed API key, same original inference path.
-- Source video and frame sampling: old 9f035bee algorithms; model instructions use Prompt Engineering v2.0 (`01_RECONSTRUCTION_PROMPT.txt`, `02_BLOCK_KNOWLEDGE.txt`, and the user/frame wrappers).
-- Scene coordinates use `base_y` as the player's standing/building baseline, so below-grade excavation and above-grade construction can coexist in one scene. Lava, magma blocks, and lava cauldrons are replaced with orange/yellow luminous solids.
-- Output: write a temporary ZIP on the destination volume, then atomically replace only when the original destination has not changed. Confirmation is needed to overwrite an existing ZIP.
-- Placeable entities: armor stands, paintings, item frames, glow item frames, and other explicitly evidenced `/summon` objects are emitted from the scene's `entities` array and tagged for scoped undo.
-- Cancellation: terminates the local worker process; **does not guarantee refund or cancellation of a request already accepted remotely**.
-- Commands: copy any `/reload`, `vidbuild:check`, `vidbuild:build`, `vidbuild:undo`; Ctrl+O to browse video, Ctrl+S to set output.
-- Hints: optional, up to 8192 characters; preserved evidence and uncertainty rules.
+    A --> B
+    B --> C
+    P --> C
+    H -.-> C
+    C --> D
+    D --> E
+    E --> F
+    E --> G
+    F --> I
 
-## Code & tests
+    classDef pill fill:#1b2433,stroke:#6ea8ff,color:#eef4ff,stroke-width:2px;
+    classDef process fill:#1a1f2b,stroke:#7d8796,color:#eef2f8,stroke-width:1.5px;
+    classDef input fill:#20283a,stroke:#7d8796,color:#eef2f8,stroke-width:1.5px;
+    classDef core fill:#18352c,stroke:#63c29a,color:#eafaf2,stroke-width:2px;
+    classDef output fill:#18263d,stroke:#6ea8ff,color:#eef4ff,stroke-width:1.8px;
+    classDef optional fill:#141923,stroke:#566173,color:#d7deea,stroke-width:1.2px,stroke-dasharray: 5 4;
 
-The CLI remains available unchanged:
+    class A,I pill
+    class B,C,E process
+    class P,H optional
+    class D core
+    class F,G output
+
+```
+
+The generated scene is bounded, validated, and translated into Minecraft commands. Regions that cannot be supported by the available evidence are preserved instead of being guessed as empty space. The Data Pack also contains build and undo functions; it does not require a Minecraft mod or server-side plugin.
+
+Generation runs in a separate process so the desktop UI stays responsive. The application reports its current stage and elapsed time; it does **not** display an invented exact completion percentage. Canceling stops the local worker, but requests already accepted by a remote provider may still incur usage.
+
+## Command-line usage
+
+The reconstruction pipeline can also be used without the desktop UI.
+
+**Compile an existing scene JSON into a Data Pack (no model request):**
 
 ```bash
-python video2pack.py --scene examples/demo_house.json --out demo.zip
-python -m pytest -q tests/test_generation_runtime.py tests/test_pack.py tests/test_special_blocks.py tests/test_video_frames.py tests/test_auth.py
+python -m core.video2pack --scene examples/demo_house.json --out demo_house.zip
 ```
 
-To launch without the helper script (after installing `requirements.txt`):
+**Reconstruct a video using an OpenAI API key:**
 
 ```bash
-python app.py
-python app.py --video path/to/tutorial.mp4 --out output.zip
+# Set OPENAI_API_KEY in your shell before running this command.
+python -m core.video2pack --video tutorial.mp4 --auth api --model gpt-5.5 --frames 300 --out build.zip
 ```
 
-## Current verification status
+Use a model that is actually available to your API account. CLI ChatGPT authentication uses a locally saved account registration; signing in through the desktop app is the easiest setup path.
 
-- The old reconstruction, auth, frame-processing and pack tests run in the supplied offline environment (where their Python dependencies are present).
-- The new process/ZIP safety tests run offline without Qt.
-- Prompt v2.0 asset loading, hint/frame wrappers, and Light/Barrier mask protection are covered by the existing test suite.
-- Block IDs are accepted when they use valid Minecraft identifier syntax, so registry additions and version-specific placeable blocks are not blocked; fluid-seal tagging remains conservative.
-- Block-state validation checks syntax and duplicate keys without rejecting newer or less common vanilla properties such as `berries=true`.
-- **Not verified on a running Windows/PySide6 GPU window here**: the build environment had no PySide6 installation and couldn't reach the package index to fetch it. You should run it on Windows to check codec/driver-specific behavior. This is a ready-to-try source project, not a claim of Windows UI performance benchmarking.
-- The two original OAuth inference tests that import `openai` require the `openai` package. They were not runnable in this offline container, although the source is unmodified.
+**Open the desktop UI with paths preselected:**
 
-## Architecture
-
-```text
-app.py (QApplication + QQmlApplicationEngine)
-   -> qml/Main.qml (Qt Quick UI, GPU-composited)
-   -> backend_bridge.py (QObject properties / slots; Qt main thread)
-     -> ChatGPTAuth (background thread for sign-in and model listing)
-     -> multiprocessing child (generation_runtime.generation_worker)
-       -> video2pack.run() (original 9f035bee version, unchanged)
-          -> video_frames, infer_scene, validate_scene, compile_datapack
-       -> temporary ZIP
-     -> safe atomic commit of destination ZIP
+```bash
+python app.py --video tutorial.mp4 --out build.zip
 ```
 
-The QML frontend never directly imports `cv2`, OpenAI, or Tkinter.
+The CLI additionally accepts `--offset X Y Z` to control the in-game build offset and `--building-hints` for optional reconstruction instructions. Run `python -m core.video2pack --help` for all options.
+
+## Project structure
+
+| Path | Purpose |
+| --- | --- |
+| `app.py` | Desktop application entry point |
+| `qml/` | Qt Quick interface and reusable components |
+| `core/` | Python backend, Qt bridge, inference, authentication, and scene logic |
+| `prompts/` | Reconstruction instructions and prompt assets |
+| `data/vanilla_blocks_26_3.txt` | Minecraft block reference list |
+| `examples/` | Example scene JSON files |
+| `tests/` | Automated tests |

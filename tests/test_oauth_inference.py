@@ -6,7 +6,7 @@ import sys
 import unittest
 from unittest.mock import patch
 
-from video2pack import _request_scene_text, infer_scene, run
+from core.video2pack import _request_scene_text, infer_scene, run
 
 class FakeStream:
     def __init__(self, events): self.events=events
@@ -39,7 +39,7 @@ class InferTests(unittest.TestCase):
             requests.append(params)
             return replies.pop(0)
         client = NS(responses=NS(create=create))
-        with patch('video2pack.time.sleep') as sleep:
+        with patch('core.video2pack.time.sleep') as sleep:
             result = _request_scene_text(client, {'stream':True, 'model':'m'}, 'm', 1000)
         self.assertEqual(result, '{"ok":true}')
         self.assertEqual(len(requests), 2)
@@ -67,9 +67,9 @@ class InferTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             out = Path(temp)/'existing.zip'
             out.write_bytes(b'previous-file')
-            with patch('video2pack.video_frames', return_value=[(1,b'jpeg')]), \
+            with patch('core.video2pack.video_frames', return_value=[(1,b'jpeg')]), \
                  patch.dict(sys.modules, {'openai':NS(OpenAI=DummyOpenAI)}), \
-                 patch('video2pack.time.sleep') as sleep:
+                 patch('core.video2pack.time.sleep') as sleep:
                 with self.assertRaises(RuntimeError) as caught:
                     run(video='test.mp4', out=str(out), model='m', frames=2, access_token='private-token')
             self.assertEqual(len(calls), 1)
@@ -89,7 +89,7 @@ class InferTests(unittest.TestCase):
             calls.append(params)
             return FakeStream([NS(type='response.failed', response=NS(error=NS(
                 code='subscription_sharing_usage_limit_exceeded')))])
-        with patch('video2pack.time.sleep') as sleep:
+        with patch('core.video2pack.time.sleep') as sleep:
             with self.assertRaisesRegex(RuntimeError, 'subscription_sharing_usage_limit_exceeded'):
                 _request_scene_text(NS(responses=NS(create=create)), {'stream':True}, 'm', 1000)
         self.assertEqual(len(calls), 1)
@@ -100,7 +100,7 @@ class InferTests(unittest.TestCase):
         def create(**params):
             calls.append(params)
             return FakeStream([NS(type='response.failed', response=NS(error=NS(code='server_error')))])
-        with patch('video2pack.time.sleep'):
+        with patch('core.video2pack.time.sleep'):
             with self.assertRaisesRegex(RuntimeError, 'Attempt: 2/2'):
                 _request_scene_text(NS(responses=NS(create=create)), {'stream':True}, 'm', 1000)
         self.assertEqual(len(calls), 2)
@@ -119,7 +119,7 @@ class InferTests(unittest.TestCase):
             def create(self, **params):
                 seen['request']=params
                 return FakeStream(events)
-        with patch('video2pack.video_frames',return_value=[(1,b'jpeg'),(2,b'jpeg')]), \
+        with patch('core.video2pack.video_frames',return_value=[(1,b'jpeg'),(2,b'jpeg')]), \
              patch.dict(sys.modules, {'openai': NS(OpenAI=DummyOpenAI)}):
             actual=infer_scene(Path('mock.mp4'), 'account-listed-model', 2,
                                auth_mode='chatgpt',access_token='fake-token')
@@ -131,6 +131,25 @@ class InferTests(unittest.TestCase):
         self.assertEqual(seen['request']['model'],'account-listed-model')
         self.assertEqual(seen['request']['text']['format']['type'],'json_schema')
         self.assertEqual(len(seen['request']['input'][0]['content']), 5)
+
+    def test_malformed_model_block_is_downgraded_without_air(self):
+        scene = {'name':'bad-token','size':[2,2,2],
+                 'ops':[{'block':'/6','from':[0,0,0],'to':[1,0,1]}]}
+        payload = model_payload(scene)
+        progress = []
+        class DummyOpenAI:
+            def __init__(self, **params): self.responses=self
+            def create(self, **params):
+                return FakeStream([NS(type='response.output_text.delta', delta=payload),
+                                   NS(type='response.completed', response=NS(output=[]))])
+        with patch('core.video2pack.video_frames', return_value=[(1,b'jpeg')]), \
+             patch.dict(sys.modules, {'openai': NS(OpenAI=DummyOpenAI)}):
+            result = infer_scene(Path('mock.mp4'), 'mock', 2,
+                                 auth_mode='chatgpt', access_token='test',
+                                 progress=progress.append)
+        self.assertEqual(result['ops'][0]['action'], 'unknown')
+        self.assertIsNone(result['ops'][0]['block'])
+        self.assertTrue(any('malformed block IDs' in message for message in progress))
 
     def test_video_to_zip_with_fake_model_stream(self):
         import tempfile
@@ -145,7 +164,7 @@ class InferTests(unittest.TestCase):
                                    NS(type='response.completed',response=NS(output=[]))])
         with tempfile.TemporaryDirectory() as temp:
             out=Path(temp)/'video_build.zip'
-            with patch('video2pack.video_frames',return_value=[(1,b'jpeg')]), \
+            with patch('core.video2pack.video_frames',return_value=[(1,b'jpeg')]), \
                  patch.dict(sys.modules, {'openai': NS(OpenAI=DummyOpenAI)}):
                 summary=run(video='test.mp4',out=str(out), model='mock', frames=2,
                             auth_mode='chatgpt',access_token='test')
@@ -161,7 +180,7 @@ class InferTests(unittest.TestCase):
         class DummyOpenAI:
             def __init__(self, **params): self.responses=self
             def create(self, **params): return FakeStream([NS(type='response.output_text.delta',delta='{}')])
-        with patch('video2pack.video_frames',return_value=[(1,b'jpeg')]), patch.dict(sys.modules, {'openai': NS(OpenAI=DummyOpenAI)}):
+        with patch('core.video2pack.video_frames',return_value=[(1,b'jpeg')]), patch.dict(sys.modules, {'openai': NS(OpenAI=DummyOpenAI)}):
             with self.assertRaisesRegex(RuntimeError, 'without response.completed'):
                 infer_scene(Path('mock.mp4'),'m', 2, auth_mode='chatgpt', access_token='test')
 

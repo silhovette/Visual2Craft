@@ -5,8 +5,8 @@ import queue
 import tempfile
 import unittest
 
-from generation_runtime import generation_worker
-from live_scene import BlockGeometry, scene_blocks
+from core.generation_runtime import generation_worker
+from core.live_scene import BlockGeometry, scene_blocks
 
 ROOT = Path(__file__).resolve().parents[1]
 

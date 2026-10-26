@@ -9,8 +9,8 @@ import unittest
 from unittest.mock import patch
 import zipfile
 
-from block_rules import classify_block, cells, prepare_plan, split_block
-from video2pack import (MAX_COMMANDS, PALETTE_SET, SCENE_SCHEMA, check_block,
+from core.block_rules import classify_block, cells, prepare_plan, split_block
+from core.video2pack import (MAX_COMMANDS, PALETTE_SET, SCENE_SCHEMA, check_block,
                         compile_datapack, infer_scene, make_commands, make_entity_commands,
                         make_undo_commands, run, validate_scene)
 
@@ -317,7 +317,7 @@ class SpecialBlockTests(unittest.TestCase):
             def create(self,**kwargs): return Stream()
         with tempfile.TemporaryDirectory() as temp:
             output = Path(temp)/'result.zip'
-            with patch('video2pack.video_frames', return_value=[(1,b'jpeg')]), \
+            with patch('core.video2pack.video_frames', return_value=[(1,b'jpeg')]), \
                  patch.dict(sys.modules, {'openai':NS(OpenAI=Client)}):
                 summary = run(video='test.mp4', out=str(output), access_token='test')
             self.assertEqual(summary['skipped_regions'], 1)
@@ -381,7 +381,7 @@ class SpecialBlockTests(unittest.TestCase):
         class Client:
             def __init__(self,**params): self.responses=self
             def create(self,**request): seen.update(request); return Stream()
-        with patch('video2pack.video_frames',return_value=[(45,b'jpeg')]), \
+        with patch('core.video2pack.video_frames',return_value=[(45,b'jpeg')]), \
              patch.dict(sys.modules,{'openai':NS(OpenAI=Client)}):
             result = infer_scene(Path('mock.mp4'),'m',2,access_token='test',building_hints='Place light level 8')
             self.assertIn('level=8', result['ops'][0]['block'])

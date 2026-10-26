@@ -56,7 +56,7 @@ def main(argv=None):
     except ImportError as exc:
         raise SystemExit('PySide6 is missing. Run START_WINDOWS.bat or: python -m pip install -r requirements.txt') from exc
 
-    from backend_bridge import StudioBridge
+    from core.backend_bridge import StudioBridge
 
     # QApplication is not needed for Qt Quick; native QFileDialog/QMessageBox use
     # QWidget-based dialogs, so use QApplication instead.

@@ -8,7 +8,7 @@ import unittest
 import cv2
 import numpy as np
 
-from video2pack import _sample_frame_ids, _select_frame_indices, video_frames
+from core.video2pack import _sample_frame_ids, _select_frame_indices, video_frames
 
 
 class VideoFramesTests(unittest.TestCase):

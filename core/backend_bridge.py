@@ -1,6 +1,7 @@
 """Thread-safe Qt/QML adapter for the unmodified 9f035bee core.
 
-Only this module knows about Qt. All OpenAI/video inference stays in video2pack.py.
+Only this module knows about Qt. All OpenAI/video inference stays in the
+package's video2pack module.
 """
 from __future__ import annotations
 
@@ -17,11 +18,11 @@ from typing import Any
 from PySide6.QtCore import QObject, Property, QTimer, QUrl, Signal, Slot
 from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox
 
-from chatgpt_auth import ChatGPTAuth
-from generation_runtime import (available_output, commit_output, generation_worker,
-                                output_snapshot, validate_output_path)
-from video2pack import DEFAULT_FRAMES, MAX_FRAMES
-from live_scene import BlockGeometry, MAX_RENDER_BLOCKS, scene_blocks
+from .chatgpt_auth import ChatGPTAuth
+from .generation_runtime import (available_output, commit_output, generation_worker,
+                                  output_snapshot, validate_output_path)
+from .video2pack import DEFAULT_FRAMES, MAX_FRAMES
+from .live_scene import BlockGeometry, MAX_RENDER_BLOCKS, scene_blocks
 
 GAME_COMMANDS = ('/reload', '/function vidbuild:check', '/function vidbuild:build', '/function vidbuild:undo')
 

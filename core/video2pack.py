@@ -18,8 +18,8 @@ import time
 import zipfile
 from typing import Any, Callable
 
-from block_rules import (BLOCK_KNOWLEDGE, SPECIAL_PALETTE, build_phase,
-                         has_water, prepare_plan)
+from .block_rules import (BLOCK_KNOWLEDGE, SPECIAL_PALETTE, build_phase,
+                          has_water, prepare_plan)
 
 PACK_VERSION = [121, 0]  # Java 26.3
 NAMESPACE = "vidbuild"
@@ -37,7 +37,7 @@ def _prompt_asset(name: str) -> str:
     Keeping the prompt in text files makes the model contract reviewable and
     prevents a UI-only build from silently retaining an older inline prompt.
     """
-    path = Path(__file__).with_name(name)
+    path = Path(__file__).resolve().parents[1] / "prompts" / name
     try:
         return path.read_text(encoding="utf-8").strip()
     except OSError as exc:
@@ -79,7 +79,7 @@ PALETTE = list(dict.fromkeys(PALETTE + SPECIAL_PALETTE))
 
 
 def _load_vanilla_block_ids() -> set[str]:
-    registry = Path(__file__).with_name("vanilla_blocks_26_3.txt")
+    registry = Path(__file__).resolve().parents[1] / "data" / "vanilla_blocks_26_3.txt"
     try:
         names = {line.strip() for line in registry.read_text(encoding="utf-8").splitlines()
                  if line.strip() and not line.startswith("#")}
@@ -816,6 +816,24 @@ def _request_scene_text(client, request: dict, model: str, frame_count: int,
             raise RuntimeError('\n'.join(lines)) from None
 
 
+def _downgrade_malformed_model_blocks(scene: dict[str, Any]) -> int:
+    """Keep malformed confirmed model blocks as explicit untouched regions."""
+    downgraded = 0
+    for op in scene.get('ops', []):
+        if not isinstance(op, dict):
+            continue
+        if op.get('action') not in ('place', 'clear') or op.get('confidence') != 'confirmed':
+            continue
+        try:
+            check_block(op.get('block'))
+        except (TypeError, ValueError):
+            # A stray token such as "/6" is model uncertainty, never a reason
+            # to abort the whole scene and never permission to place air.
+            op.update(action='unknown', confidence='uncertain', replace=False, block=None)
+            downgraded += 1
+    return downgraded
+
+
 def infer_scene(video: Path, model: str, frame_count: int, api_key: str | None = None,
                 auth_mode: str = "chatgpt", access_token: str | None = None,
                 progress: Callable[[str], None] | None = None,
@@ -869,6 +887,7 @@ def infer_scene(video: Path, model: str, frame_count: int, api_key: str | None =
         raise RuntimeError("Model did not return a JSON scene; try fewer frames or another model")
     try:
         raw_scene = json.loads(output_text)
+        malformed_blocks = _downgrade_malformed_model_blocks(raw_scene)
         scene = validate_scene(raw_scene)
         available = {frame_id for frame_id, _ in frames}
         sanitized_frames = 0
@@ -896,6 +915,8 @@ def infer_scene(video: Path, model: str, frame_count: int, api_key: str | None =
             _report_progress(progress, f'Ignored {sanitized_frames} model frame citation(s) not present in the supplied samples.')
         if downgraded_ops:
             _report_progress(progress, f'Downgraded {downgraded_ops} model region(s) with unusable evidence to unknown; those regions remain untouched.')
+        if malformed_blocks:
+            _report_progress(progress, f'Downgraded {malformed_blocks} model region(s) with malformed block IDs to unknown; those regions remain untouched.')
         kept_entities = []
         dropped_entities = 0
         for entity in scene.get('entities', []):
@@ -960,7 +981,7 @@ def main():
         access_token = None
         model = args.model
         if args.video and args.auth == "chatgpt":
-            from chatgpt_auth import ChatGPTAuth
+            from .chatgpt_auth import ChatGPTAuth
             auth = ChatGPTAuth()
             access_token = auth.access_token()
             if not model:

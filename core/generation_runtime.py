@@ -1,6 +1,7 @@
 """Pure Python generation runtime; no GUI dependencies or inference algorithm changes.
 
-All inference and datapack logic remains in the archived old-version video2pack.py.
+All inference and datapack logic remains in the archived old-version
+video2pack module.
 Qt runs this function in a spawned child process so cancellation is real.
 """
 from __future__ import annotations
@@ -69,11 +70,11 @@ def commit_output(temp_zip: str, destination: str, expected_snapshot):
 def generation_worker(params: dict, messages):
     """Top-level entrypoint required by Windows multiprocessing spawn."""
     try:
-        import video2pack
+        from . import video2pack
         run = video2pack.run
         params = dict(params)
         if params.get('auth_mode') == 'chatgpt':
-            from chatgpt_auth import ChatGPTAuth
+            from .chatgpt_auth import ChatGPTAuth
             params['access_token'] = ChatGPTAuth().access_token()
         # Keep the archived core's public API and source contract unchanged.
         # Wrapping its compiler lets us publish the exact validated scene only
