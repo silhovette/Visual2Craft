@@ -24,9 +24,17 @@ class UIContractTests(unittest.TestCase):
     def test_qml_assets_exist_and_frontend_does_not_import_tkinter(self):
         for relative in ['qml/Main.qml', 'qml/components/StudioCard.qml',
                          'qml/components/StudioButton.qml', 'qml/components/StudioField.qml',
-                         'qml/components/StudioCombo.qml', 'assets/logo.png',
-                         'assets/scenery_2560.jpg']:
+                         'qml/components/StudioCombo.qml', 'assets/scenery_2560.jpg',
+                         'assets/visual2craft-logo.png', 'assets/visual2craft-logo (1).png',
+                         'assets/visual2craft-logo (3).png', 'assets/visual2craft-logo (4).png',
+                         'assets/visual2craft-logo (5).png', 'assets/visual2craft-logo (6).png',
+                         'assets/visual2craft-logo (7).png', 'assets/visual2craft-logo (8).png',
+                         'assets/visual2craft-logo (9).png', 'assets/visual2craft-logo (10).png']:
             self.assertTrue((ROOT / relative).is_file(), relative)
+        qml = (ROOT / 'qml/Main.qml').read_text(encoding='utf-8')
+        self.assertIn('property string splashLogoSource: chooseSplashLogo()', qml)
+        self.assertIn('Math.random() < 0.01', qml)
+        self.assertIn('source: window.splashLogoSource', qml)
         for name in ('app.py', 'core/backend_bridge.py', 'core/generation_runtime.py'):
             tree = ast.parse((ROOT / name).read_text(encoding='utf-8'))
             imports = [n.names[0].name for n in ast.walk(tree) if isinstance(n, ast.Import)]

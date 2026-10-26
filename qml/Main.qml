@@ -22,6 +22,24 @@ ApplicationWindow {
     property color white: "#F1F5FA"
     property color muted: "#A2B0C1"
     property bool splashActive: true
+    property var splashLogoAlternatives: [
+        "../assets/visual2craft-logo (10).png",
+        "../assets/visual2craft-logo (1).png",
+        "../assets/visual2craft-logo (3).png",
+        "../assets/visual2craft-logo (4).png",
+        "../assets/visual2craft-logo (5).png",
+        "../assets/visual2craft-logo (6).png",
+        "../assets/visual2craft-logo (7).png",
+        "../assets/visual2craft-logo (8).png",
+        "../assets/visual2craft-logo (9).png"
+    ]
+    property string splashLogoSource: chooseSplashLogo()
+
+    function chooseSplashLogo() {
+        // Keep the unnumbered logo rare (1%); the other nine share the remaining 99%.
+        if (Math.random() < 0.01) return "../assets/visual2craft-logo.png"
+        return splashLogoAlternatives[Math.floor(Math.random() * splashLogoAlternatives.length)]
+    }
 
     function skipSplash() {
         if (!splashActive) return
@@ -59,7 +77,7 @@ ApplicationWindow {
             anchors.centerIn: parent
             width: Math.min(parent.width * 0.68, 760)
             height: Math.min(parent.height * 0.24, 210)
-            source: "../assets/logo.png"
+            source: window.splashLogoSource
             fillMode: Image.PreserveAspectFit
             smooth: true
             mipmap: true
