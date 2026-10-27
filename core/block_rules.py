@@ -207,9 +207,37 @@ def resolve_operations(ops, limit):
     return plan
 
 
-def prepare_plan(ops, limit):
+def plan_lookup(plan):
+    """Sparse cuboid lookup; the resolved plan contains no overlaps."""
+    tiles = {}
+    for op in plan:
+        a, b = op['from'], op['to']
+        for tx in range(a[0] // 16, b[0] // 16 + 1):
+            for tz in range(a[2] // 16, b[2] // 16 + 1):
+                tiles.setdefault((tx, tz), []).append(op)
+
+    def block_at(x, y, z):
+        for region in tiles.get((x // 16, z // 16), ()):
+            a, b = region['from'], region['to']
+            if a[0] <= x <= b[0] and a[1] <= y <= b[1] and a[2] <= z <= b[2]:
+                return region['block']
+        return None
+    return block_at
+
+
+def prepare_plan(ops, limit, *, diagnostics=None):
+    from .stair_rules import resolve_stairs
+    diagnostics = [] if diagnostics is None else diagnostics
     plan = resolve_operations(ops, limit)
-    world = {point: op['block'] for op in plan for point in cells(op)}
+    # Pane connections only need four neighbor lookups. Index cuboids by
+    # horizontal 16-block tiles instead of materializing every occupied cell
+    # of a potentially 100-million-cell scene.
+    needs_connections = any(is_pane(split_block(op['block'])[0]) and
+                            not HORIZONTAL <= split_block(op['block'])[1].keys()
+                            for op in plan)
+    if any(split_block(op['block'])[0].endswith('_stairs') for op in plan):
+        plan = resolve_stairs(plan, plan_lookup(plan), diagnostics, limit)
+    block_at = plan_lookup(plan) if needs_connections else None
     resolved = []
     for op in plan:
         name, states = split_block(op['block'])
@@ -224,7 +252,7 @@ def prepare_plan(ops, limit):
                 for x in range(op['from'][0], op['to'][0] + 1):
                     connected = states.copy()
                     for direction, delta in DIRECTIONS.items():
-                        neighbor = world.get((x + delta[0], y, z + delta[2]))
+                        neighbor = block_at(x + delta[0], y, z + delta[2])
                         value = neighbor and (is_pane(split_block(neighbor)[0]) or full_seal(neighbor))
                         connected.setdefault(direction, 'true' if value else 'false')
                     block = 'minecraft:' + name + '[' + ','.join(f'{k}={v}' for k, v in sorted(connected.items())) + ']'
@@ -234,7 +262,7 @@ def prepare_plan(ops, limit):
                         runs.append({**op, 'block': block, 'from': [x, y, z], 'to': [x, y, z]})
         resolved.extend(runs)
     if len(resolved) > limit:
-        raise ValueError('Pane connections produce too many command regions')
+        raise ValueError('Directional block resolution produces too many command regions')
     return resolved
 
 

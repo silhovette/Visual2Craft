@@ -142,6 +142,10 @@ flowchart TD
 
 The generated scene is bounded, validated, and translated into Minecraft commands. Regions that cannot be supported by the available evidence are preserved instead of being guessed as empty space. The Data Pack also contains build and undo functions; it does not require a Minecraft mod or server-side plugin.
 
+Large-building capacity: scenes can span **512 × 384 × 512 blocks** (width × height × depth), with up to **100,663,296 bounding-box cells**, **8,000 block operations**, and **200,000 block commands** for each of build and undo. A cuboid operation can place many blocks; empty space inside the bounding box does not allocate a full voxel grid during compilation. Individual fill commands remain split into at most 4,096 cells. The desktop preview supports up to **1,000,000 visible blocks**; larger scenes still export, but their preview is unavailable. Large previews are loaded without the incremental build animation.
+
+Reconstruction prioritizes the complete evidenced height and layout before small decorations. API requests no longer impose the application's former 20,000-token output cap; the selected model's output and context limits still apply. These capacities do not guarantee reconstruction accuracy. In Minecraft, choose a build elevation that fits the world's vertical range and ensure the affected chunks are loaded; exporting a scene does not extend the world's build limits or load distant chunks automatically.
+
 Generation runs in a separate process so the desktop UI stays responsive. The application reports its current stage and elapsed time; it does **not** display an invented exact completion percentage. Canceling stops the local worker, but requests already accepted by a remote provider may still incur usage.
 
 ## Command-line usage

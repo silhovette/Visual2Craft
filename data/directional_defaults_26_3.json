@@ -1,0 +1,1252 @@
+{
+  "minecraft_version": "26.3",
+  "source": "https://piston-meta.mojang.com/v1/packages/5df1795e16eea19d75b923d66ecca9ce183353c5/26.3.json",
+  "blocks": {
+    "minecraft:acacia_button": {
+      "facing": "north"
+    },
+    "minecraft:acacia_door": {
+      "facing": "north",
+      "hinge": "left"
+    },
+    "minecraft:acacia_fence_gate": {
+      "facing": "north"
+    },
+    "minecraft:acacia_hanging_sign": {
+      "rotation": "8"
+    },
+    "minecraft:acacia_log": {
+      "axis": "y"
+    },
+    "minecraft:acacia_shelf": {
+      "facing": "north"
+    },
+    "minecraft:acacia_sign": {
+      "rotation": "8"
+    },
+    "minecraft:acacia_trapdoor": {
+      "facing": "north"
+    },
+    "minecraft:acacia_wall_hanging_sign": {
+      "facing": "north"
+    },
+    "minecraft:acacia_wall_sign": {
+      "facing": "north"
+    },
+    "minecraft:acacia_wood": {
+      "axis": "y"
+    },
+    "minecraft:activator_rail": {
+      "shape": "north_south"
+    },
+    "minecraft:amethyst_cluster": {
+      "facing": "up"
+    },
+    "minecraft:anvil": {
+      "facing": "north"
+    },
+    "minecraft:attached_melon_stem": {
+      "facing": "north"
+    },
+    "minecraft:attached_pumpkin_stem": {
+      "facing": "north"
+    },
+    "minecraft:bamboo_block": {
+      "axis": "y"
+    },
+    "minecraft:bamboo_button": {
+      "facing": "north"
+    },
+    "minecraft:bamboo_door": {
+      "facing": "north",
+      "hinge": "left"
+    },
+    "minecraft:bamboo_fence_gate": {
+      "facing": "north"
+    },
+    "minecraft:bamboo_hanging_sign": {
+      "rotation": "8"
+    },
+    "minecraft:bamboo_shelf": {
+      "facing": "north"
+    },
+    "minecraft:bamboo_sign": {
+      "rotation": "8"
+    },
+    "minecraft:bamboo_trapdoor": {
+      "facing": "north"
+    },
+    "minecraft:bamboo_wall_hanging_sign": {
+      "facing": "north"
+    },
+    "minecraft:bamboo_wall_sign": {
+      "facing": "north"
+    },
+    "minecraft:barrel": {
+      "facing": "north"
+    },
+    "minecraft:basalt": {
+      "axis": "y"
+    },
+    "minecraft:bee_nest": {
+      "facing": "north"
+    },
+    "minecraft:beehive": {
+      "facing": "north"
+    },
+    "minecraft:bell": {
+      "facing": "north"
+    },
+    "minecraft:big_dripleaf": {
+      "facing": "north"
+    },
+    "minecraft:big_dripleaf_stem": {
+      "facing": "north"
+    },
+    "minecraft:birch_button": {
+      "facing": "north"
+    },
+    "minecraft:birch_door": {
+      "facing": "north",
+      "hinge": "left"
+    },
+    "minecraft:birch_fence_gate": {
+      "facing": "north"
+    },
+    "minecraft:birch_hanging_sign": {
+      "rotation": "8"
+    },
+    "minecraft:birch_log": {
+      "axis": "y"
+    },
+    "minecraft:birch_shelf": {
+      "facing": "north"
+    },
+    "minecraft:birch_sign": {
+      "rotation": "8"
+    },
+    "minecraft:birch_trapdoor": {
+      "facing": "north"
+    },
+    "minecraft:birch_wall_hanging_sign": {
+      "facing": "north"
+    },
+    "minecraft:birch_wall_sign": {
+      "facing": "north"
+    },
+    "minecraft:birch_wood": {
+      "axis": "y"
+    },
+    "minecraft:black_banner": {
+      "rotation": "8"
+    },
+    "minecraft:black_bed": {
+      "facing": "north"
+    },
+    "minecraft:black_glazed_terracotta": {
+      "facing": "north"
+    },
+    "minecraft:black_shulker_box": {
+      "facing": "up"
+    },
+    "minecraft:black_wall_banner": {
+      "facing": "north"
+    },
+    "minecraft:blast_furnace": {
+      "facing": "north"
+    },
+    "minecraft:blue_banner": {
+      "rotation": "8"
+    },
+    "minecraft:blue_bed": {
+      "facing": "north"
+    },
+    "minecraft:blue_glazed_terracotta": {
+      "facing": "north"
+    },
+    "minecraft:blue_shulker_box": {
+      "facing": "up"
+    },
+    "minecraft:blue_wall_banner": {
+      "facing": "north"
+    },
+    "minecraft:bone_block": {
+      "axis": "y"
+    },
+    "minecraft:brain_coral_wall_fan": {
+      "facing": "north"
+    },
+    "minecraft:brown_banner": {
+      "rotation": "8"
+    },
+    "minecraft:brown_bed": {
+      "facing": "north"
+    },
+    "minecraft:brown_glazed_terracotta": {
+      "facing": "north"
+    },
+    "minecraft:brown_shulker_box": {
+      "facing": "up"
+    },
+    "minecraft:brown_wall_banner": {
+      "facing": "north"
+    },
+    "minecraft:bubble_coral_wall_fan": {
+      "facing": "north"
+    },
+    "minecraft:calibrated_sculk_sensor": {
+      "facing": "north"
+    },
+    "minecraft:campfire": {
+      "facing": "north"
+    },
+    "minecraft:carved_pumpkin": {
+      "facing": "north"
+    },
+    "minecraft:chain_command_block": {
+      "facing": "north"
+    },
+    "minecraft:cherry_button": {
+      "facing": "north"
+    },
+    "minecraft:cherry_door": {
+      "facing": "north",
+      "hinge": "left"
+    },
+    "minecraft:cherry_fence_gate": {
+      "facing": "north"
+    },
+    "minecraft:cherry_hanging_sign": {
+      "rotation": "8"
+    },
+    "minecraft:cherry_log": {
+      "axis": "y"
+    },
+    "minecraft:cherry_shelf": {
+      "facing": "north"
+    },
+    "minecraft:cherry_sign": {
+      "rotation": "8"
+    },
+    "minecraft:cherry_trapdoor": {
+      "facing": "north"
+    },
+    "minecraft:cherry_wall_hanging_sign": {
+      "facing": "north"
+    },
+    "minecraft:cherry_wall_sign": {
+      "facing": "north"
+    },
+    "minecraft:cherry_wood": {
+      "axis": "y"
+    },
+    "minecraft:chest": {
+      "facing": "north"
+    },
+    "minecraft:chipped_anvil": {
+      "facing": "north"
+    },
+    "minecraft:chiseled_bookshelf": {
+      "facing": "north"
+    },
+    "minecraft:cocoa": {
+      "facing": "north"
+    },
+    "minecraft:command_block": {
+      "facing": "north"
+    },
+    "minecraft:comparator": {
+      "facing": "north"
+    },
+    "minecraft:copper_chain": {
+      "axis": "y"
+    },
+    "minecraft:copper_chest": {
+      "facing": "north"
+    },
+    "minecraft:copper_door": {
+      "facing": "north",
+      "hinge": "left"
+    },
+    "minecraft:copper_golem_statue": {
+      "facing": "north"
+    },
+    "minecraft:copper_trapdoor": {
+      "facing": "north"
+    },
+    "minecraft:copper_wall_torch": {
+      "facing": "north"
+    },
+    "minecraft:crafter": {
+      "orientation": "north_up"
+    },
+    "minecraft:creaking_heart": {
+      "axis": "y"
+    },
+    "minecraft:creeper_head": {
+      "rotation": "0"
+    },
+    "minecraft:creeper_wall_head": {
+      "facing": "north"
+    },
+    "minecraft:crimson_button": {
+      "facing": "north"
+    },
+    "minecraft:crimson_door": {
+      "facing": "north",
+      "hinge": "left"
+    },
+    "minecraft:crimson_fence_gate": {
+      "facing": "north"
+    },
+    "minecraft:crimson_hanging_sign": {
+      "rotation": "8"
+    },
+    "minecraft:crimson_hyphae": {
+      "axis": "y"
+    },
+    "minecraft:crimson_shelf": {
+      "facing": "north"
+    },
+    "minecraft:crimson_sign": {
+      "rotation": "8"
+    },
+    "minecraft:crimson_stem": {
+      "axis": "y"
+    },
+    "minecraft:crimson_trapdoor": {
+      "facing": "north"
+    },
+    "minecraft:crimson_wall_hanging_sign": {
+      "facing": "north"
+    },
+    "minecraft:crimson_wall_sign": {
+      "facing": "north"
+    },
+    "minecraft:cyan_banner": {
+      "rotation": "8"
+    },
+    "minecraft:cyan_bed": {
+      "facing": "north"
+    },
+    "minecraft:cyan_glazed_terracotta": {
+      "facing": "north"
+    },
+    "minecraft:cyan_shulker_box": {
+      "facing": "up"
+    },
+    "minecraft:cyan_wall_banner": {
+      "facing": "north"
+    },
+    "minecraft:damaged_anvil": {
+      "facing": "north"
+    },
+    "minecraft:dark_oak_button": {
+      "facing": "north"
+    },
+    "minecraft:dark_oak_door": {
+      "facing": "north",
+      "hinge": "left"
+    },
+    "minecraft:dark_oak_fence_gate": {
+      "facing": "north"
+    },
+    "minecraft:dark_oak_hanging_sign": {
+      "rotation": "8"
+    },
+    "minecraft:dark_oak_log": {
+      "axis": "y"
+    },
+    "minecraft:dark_oak_shelf": {
+      "facing": "north"
+    },
+    "minecraft:dark_oak_sign": {
+      "rotation": "8"
+    },
+    "minecraft:dark_oak_trapdoor": {
+      "facing": "north"
+    },
+    "minecraft:dark_oak_wall_hanging_sign": {
+      "facing": "north"
+    },
+    "minecraft:dark_oak_wall_sign": {
+      "facing": "north"
+    },
+    "minecraft:dark_oak_wood": {
+      "axis": "y"
+    },
+    "minecraft:dead_brain_coral_wall_fan": {
+      "facing": "north"
+    },
+    "minecraft:dead_bubble_coral_wall_fan": {
+      "facing": "north"
+    },
+    "minecraft:dead_fire_coral_wall_fan": {
+      "facing": "north"
+    },
+    "minecraft:dead_horn_coral_wall_fan": {
+      "facing": "north"
+    },
+    "minecraft:dead_tube_coral_wall_fan": {
+      "facing": "north"
+    },
+    "minecraft:decorated_pot": {
+      "facing": "north"
+    },
+    "minecraft:deepslate": {
+      "axis": "y"
+    },
+    "minecraft:detector_rail": {
+      "shape": "north_south"
+    },
+    "minecraft:dispenser": {
+      "facing": "north"
+    },
+    "minecraft:dragon_head": {
+      "rotation": "0"
+    },
+    "minecraft:dragon_wall_head": {
+      "facing": "north"
+    },
+    "minecraft:dried_ghast": {
+      "facing": "north"
+    },
+    "minecraft:dropper": {
+      "facing": "north"
+    },
+    "minecraft:end_portal_frame": {
+      "facing": "north"
+    },
+    "minecraft:end_rod": {
+      "facing": "up"
+    },
+    "minecraft:ender_chest": {
+      "facing": "north"
+    },
+    "minecraft:exposed_copper_chain": {
+      "axis": "y"
+    },
+    "minecraft:exposed_copper_chest": {
+      "facing": "north"
+    },
+    "minecraft:exposed_copper_door": {
+      "facing": "north",
+      "hinge": "left"
+    },
+    "minecraft:exposed_copper_golem_statue": {
+      "facing": "north"
+    },
+    "minecraft:exposed_copper_trapdoor": {
+      "facing": "north"
+    },
+    "minecraft:exposed_lightning_rod": {
+      "facing": "up"
+    },
+    "minecraft:fire_coral_wall_fan": {
+      "facing": "north"
+    },
+    "minecraft:furnace": {
+      "facing": "north"
+    },
+    "minecraft:gray_banner": {
+      "rotation": "8"
+    },
+    "minecraft:gray_bed": {
+      "facing": "north"
+    },
+    "minecraft:gray_glazed_terracotta": {
+      "facing": "north"
+    },
+    "minecraft:gray_shulker_box": {
+      "facing": "up"
+    },
+    "minecraft:gray_wall_banner": {
+      "facing": "north"
+    },
+    "minecraft:green_banner": {
+      "rotation": "8"
+    },
+    "minecraft:green_bed": {
+      "facing": "north"
+    },
+    "minecraft:green_glazed_terracotta": {
+      "facing": "north"
+    },
+    "minecraft:green_shulker_box": {
+      "facing": "up"
+    },
+    "minecraft:green_wall_banner": {
+      "facing": "north"
+    },
+    "minecraft:grindstone": {
+      "facing": "north"
+    },
+    "minecraft:hay_block": {
+      "axis": "y"
+    },
+    "minecraft:hopper": {
+      "facing": "down"
+    },
+    "minecraft:horn_coral_wall_fan": {
+      "facing": "north"
+    },
+    "minecraft:infested_deepslate": {
+      "axis": "y"
+    },
+    "minecraft:iron_chain": {
+      "axis": "y"
+    },
+    "minecraft:iron_door": {
+      "facing": "north",
+      "hinge": "left"
+    },
+    "minecraft:iron_trapdoor": {
+      "facing": "north"
+    },
+    "minecraft:jack_o_lantern": {
+      "facing": "north"
+    },
+    "minecraft:jigsaw": {
+      "orientation": "north_up"
+    },
+    "minecraft:jungle_button": {
+      "facing": "north"
+    },
+    "minecraft:jungle_door": {
+      "facing": "north",
+      "hinge": "left"
+    },
+    "minecraft:jungle_fence_gate": {
+      "facing": "north"
+    },
+    "minecraft:jungle_hanging_sign": {
+      "rotation": "8"
+    },
+    "minecraft:jungle_log": {
+      "axis": "y"
+    },
+    "minecraft:jungle_shelf": {
+      "facing": "north"
+    },
+    "minecraft:jungle_sign": {
+      "rotation": "8"
+    },
+    "minecraft:jungle_trapdoor": {
+      "facing": "north"
+    },
+    "minecraft:jungle_wall_hanging_sign": {
+      "facing": "north"
+    },
+    "minecraft:jungle_wall_sign": {
+      "facing": "north"
+    },
+    "minecraft:jungle_wood": {
+      "axis": "y"
+    },
+    "minecraft:ladder": {
+      "facing": "north"
+    },
+    "minecraft:large_amethyst_bud": {
+      "facing": "up"
+    },
+    "minecraft:leaf_litter": {
+      "facing": "north"
+    },
+    "minecraft:lectern": {
+      "facing": "north"
+    },
+    "minecraft:lever": {
+      "facing": "north"
+    },
+    "minecraft:light_blue_banner": {
+      "rotation": "8"
+    },
+    "minecraft:light_blue_bed": {
+      "facing": "north"
+    },
+    "minecraft:light_blue_glazed_terracotta": {
+      "facing": "north"
+    },
+    "minecraft:light_blue_shulker_box": {
+      "facing": "up"
+    },
+    "minecraft:light_blue_wall_banner": {
+      "facing": "north"
+    },
+    "minecraft:light_gray_banner": {
+      "rotation": "8"
+    },
+    "minecraft:light_gray_bed": {
+      "facing": "north"
+    },
+    "minecraft:light_gray_glazed_terracotta": {
+      "facing": "north"
+    },
+    "minecraft:light_gray_shulker_box": {
+      "facing": "up"
+    },
+    "minecraft:light_gray_wall_banner": {
+      "facing": "north"
+    },
+    "minecraft:lightning_rod": {
+      "facing": "up"
+    },
+    "minecraft:lime_banner": {
+      "rotation": "8"
+    },
+    "minecraft:lime_bed": {
+      "facing": "north"
+    },
+    "minecraft:lime_glazed_terracotta": {
+      "facing": "north"
+    },
+    "minecraft:lime_shulker_box": {
+      "facing": "up"
+    },
+    "minecraft:lime_wall_banner": {
+      "facing": "north"
+    },
+    "minecraft:loom": {
+      "facing": "north"
+    },
+    "minecraft:magenta_banner": {
+      "rotation": "8"
+    },
+    "minecraft:magenta_bed": {
+      "facing": "north"
+    },
+    "minecraft:magenta_glazed_terracotta": {
+      "facing": "north"
+    },
+    "minecraft:magenta_shulker_box": {
+      "facing": "up"
+    },
+    "minecraft:magenta_wall_banner": {
+      "facing": "north"
+    },
+    "minecraft:mangrove_button": {
+      "facing": "north"
+    },
+    "minecraft:mangrove_door": {
+      "facing": "north",
+      "hinge": "left"
+    },
+    "minecraft:mangrove_fence_gate": {
+      "facing": "north"
+    },
+    "minecraft:mangrove_hanging_sign": {
+      "rotation": "8"
+    },
+    "minecraft:mangrove_log": {
+      "axis": "y"
+    },
+    "minecraft:mangrove_shelf": {
+      "facing": "north"
+    },
+    "minecraft:mangrove_sign": {
+      "rotation": "8"
+    },
+    "minecraft:mangrove_trapdoor": {
+      "facing": "north"
+    },
+    "minecraft:mangrove_wall_hanging_sign": {
+      "facing": "north"
+    },
+    "minecraft:mangrove_wall_sign": {
+      "facing": "north"
+    },
+    "minecraft:mangrove_wood": {
+      "axis": "y"
+    },
+    "minecraft:medium_amethyst_bud": {
+      "facing": "up"
+    },
+    "minecraft:moving_piston": {
+      "facing": "north"
+    },
+    "minecraft:muddy_mangrove_roots": {
+      "axis": "y"
+    },
+    "minecraft:nether_portal": {
+      "axis": "x"
+    },
+    "minecraft:oak_button": {
+      "facing": "north"
+    },
+    "minecraft:oak_door": {
+      "facing": "north",
+      "hinge": "left"
+    },
+    "minecraft:oak_fence_gate": {
+      "facing": "north"
+    },
+    "minecraft:oak_hanging_sign": {
+      "rotation": "8"
+    },
+    "minecraft:oak_log": {
+      "axis": "y"
+    },
+    "minecraft:oak_shelf": {
+      "facing": "north"
+    },
+    "minecraft:oak_sign": {
+      "rotation": "8"
+    },
+    "minecraft:oak_trapdoor": {
+      "facing": "north"
+    },
+    "minecraft:oak_wall_hanging_sign": {
+      "facing": "north"
+    },
+    "minecraft:oak_wall_sign": {
+      "facing": "north"
+    },
+    "minecraft:oak_wood": {
+      "axis": "y"
+    },
+    "minecraft:observer": {
+      "facing": "south"
+    },
+    "minecraft:ochre_froglight": {
+      "axis": "y"
+    },
+    "minecraft:orange_banner": {
+      "rotation": "8"
+    },
+    "minecraft:orange_bed": {
+      "facing": "north"
+    },
+    "minecraft:orange_glazed_terracotta": {
+      "facing": "north"
+    },
+    "minecraft:orange_shulker_box": {
+      "facing": "up"
+    },
+    "minecraft:orange_wall_banner": {
+      "facing": "north"
+    },
+    "minecraft:oxidized_copper_chain": {
+      "axis": "y"
+    },
+    "minecraft:oxidized_copper_chest": {
+      "facing": "north"
+    },
+    "minecraft:oxidized_copper_door": {
+      "facing": "north",
+      "hinge": "left"
+    },
+    "minecraft:oxidized_copper_golem_statue": {
+      "facing": "north"
+    },
+    "minecraft:oxidized_copper_trapdoor": {
+      "facing": "north"
+    },
+    "minecraft:oxidized_lightning_rod": {
+      "facing": "up"
+    },
+    "minecraft:pale_oak_button": {
+      "facing": "north"
+    },
+    "minecraft:pale_oak_door": {
+      "facing": "north",
+      "hinge": "left"
+    },
+    "minecraft:pale_oak_fence_gate": {
+      "facing": "north"
+    },
+    "minecraft:pale_oak_hanging_sign": {
+      "rotation": "8"
+    },
+    "minecraft:pale_oak_log": {
+      "axis": "y"
+    },
+    "minecraft:pale_oak_shelf": {
+      "facing": "north"
+    },
+    "minecraft:pale_oak_sign": {
+      "rotation": "8"
+    },
+    "minecraft:pale_oak_trapdoor": {
+      "facing": "north"
+    },
+    "minecraft:pale_oak_wall_hanging_sign": {
+      "facing": "north"
+    },
+    "minecraft:pale_oak_wall_sign": {
+      "facing": "north"
+    },
+    "minecraft:pale_oak_wood": {
+      "axis": "y"
+    },
+    "minecraft:pearlescent_froglight": {
+      "axis": "y"
+    },
+    "minecraft:piglin_head": {
+      "rotation": "0"
+    },
+    "minecraft:piglin_wall_head": {
+      "facing": "north"
+    },
+    "minecraft:pink_banner": {
+      "rotation": "8"
+    },
+    "minecraft:pink_bed": {
+      "facing": "north"
+    },
+    "minecraft:pink_glazed_terracotta": {
+      "facing": "north"
+    },
+    "minecraft:pink_petals": {
+      "facing": "north"
+    },
+    "minecraft:pink_shulker_box": {
+      "facing": "up"
+    },
+    "minecraft:pink_wall_banner": {
+      "facing": "north"
+    },
+    "minecraft:piston": {
+      "facing": "north"
+    },
+    "minecraft:piston_head": {
+      "facing": "north"
+    },
+    "minecraft:player_head": {
+      "rotation": "0"
+    },
+    "minecraft:player_wall_head": {
+      "facing": "north"
+    },
+    "minecraft:polished_basalt": {
+      "axis": "y"
+    },
+    "minecraft:polished_blackstone_button": {
+      "facing": "north"
+    },
+    "minecraft:poplar_button": {
+      "facing": "north"
+    },
+    "minecraft:poplar_door": {
+      "facing": "north",
+      "hinge": "left"
+    },
+    "minecraft:poplar_fence_gate": {
+      "facing": "north"
+    },
+    "minecraft:poplar_hanging_sign": {
+      "rotation": "8"
+    },
+    "minecraft:poplar_log": {
+      "axis": "y"
+    },
+    "minecraft:poplar_shelf": {
+      "facing": "north"
+    },
+    "minecraft:poplar_sign": {
+      "rotation": "8"
+    },
+    "minecraft:poplar_trapdoor": {
+      "facing": "north"
+    },
+    "minecraft:poplar_wall_hanging_sign": {
+      "facing": "north"
+    },
+    "minecraft:poplar_wall_sign": {
+      "facing": "north"
+    },
+    "minecraft:poplar_wood": {
+      "axis": "y"
+    },
+    "minecraft:powered_rail": {
+      "shape": "north_south"
+    },
+    "minecraft:purple_banner": {
+      "rotation": "8"
+    },
+    "minecraft:purple_bed": {
+      "facing": "north"
+    },
+    "minecraft:purple_glazed_terracotta": {
+      "facing": "north"
+    },
+    "minecraft:purple_shulker_box": {
+      "facing": "up"
+    },
+    "minecraft:purple_wall_banner": {
+      "facing": "north"
+    },
+    "minecraft:purpur_pillar": {
+      "axis": "y"
+    },
+    "minecraft:quartz_pillar": {
+      "axis": "y"
+    },
+    "minecraft:rail": {
+      "shape": "north_south"
+    },
+    "minecraft:red_banner": {
+      "rotation": "8"
+    },
+    "minecraft:red_bed": {
+      "facing": "north"
+    },
+    "minecraft:red_glazed_terracotta": {
+      "facing": "north"
+    },
+    "minecraft:red_shulker_box": {
+      "facing": "up"
+    },
+    "minecraft:red_wall_banner": {
+      "facing": "north"
+    },
+    "minecraft:redstone_wall_torch": {
+      "facing": "north"
+    },
+    "minecraft:repeater": {
+      "facing": "north"
+    },
+    "minecraft:repeating_command_block": {
+      "facing": "north"
+    },
+    "minecraft:shelf_mushroom": {
+      "facing": "north"
+    },
+    "minecraft:shulker_box": {
+      "facing": "up"
+    },
+    "minecraft:skeleton_skull": {
+      "rotation": "0"
+    },
+    "minecraft:skeleton_wall_skull": {
+      "facing": "north"
+    },
+    "minecraft:small_amethyst_bud": {
+      "facing": "up"
+    },
+    "minecraft:small_dripleaf": {
+      "facing": "north"
+    },
+    "minecraft:smoker": {
+      "facing": "north"
+    },
+    "minecraft:soul_campfire": {
+      "facing": "north"
+    },
+    "minecraft:soul_wall_torch": {
+      "facing": "north"
+    },
+    "minecraft:spruce_button": {
+      "facing": "north"
+    },
+    "minecraft:spruce_door": {
+      "facing": "north",
+      "hinge": "left"
+    },
+    "minecraft:spruce_fence_gate": {
+      "facing": "north"
+    },
+    "minecraft:spruce_hanging_sign": {
+      "rotation": "8"
+    },
+    "minecraft:spruce_log": {
+      "axis": "y"
+    },
+    "minecraft:spruce_shelf": {
+      "facing": "north"
+    },
+    "minecraft:spruce_sign": {
+      "rotation": "8"
+    },
+    "minecraft:spruce_trapdoor": {
+      "facing": "north"
+    },
+    "minecraft:spruce_wall_hanging_sign": {
+      "facing": "north"
+    },
+    "minecraft:spruce_wall_sign": {
+      "facing": "north"
+    },
+    "minecraft:spruce_wood": {
+      "axis": "y"
+    },
+    "minecraft:sticky_piston": {
+      "facing": "north"
+    },
+    "minecraft:stone_button": {
+      "facing": "north"
+    },
+    "minecraft:stonecutter": {
+      "facing": "north"
+    },
+    "minecraft:straw_bed": {
+      "facing": "north"
+    },
+    "minecraft:stripped_acacia_log": {
+      "axis": "y"
+    },
+    "minecraft:stripped_acacia_wood": {
+      "axis": "y"
+    },
+    "minecraft:stripped_bamboo_block": {
+      "axis": "y"
+    },
+    "minecraft:stripped_birch_log": {
+      "axis": "y"
+    },
+    "minecraft:stripped_birch_wood": {
+      "axis": "y"
+    },
+    "minecraft:stripped_cherry_log": {
+      "axis": "y"
+    },
+    "minecraft:stripped_cherry_wood": {
+      "axis": "y"
+    },
+    "minecraft:stripped_crimson_hyphae": {
+      "axis": "y"
+    },
+    "minecraft:stripped_crimson_stem": {
+      "axis": "y"
+    },
+    "minecraft:stripped_dark_oak_log": {
+      "axis": "y"
+    },
+    "minecraft:stripped_dark_oak_wood": {
+      "axis": "y"
+    },
+    "minecraft:stripped_jungle_log": {
+      "axis": "y"
+    },
+    "minecraft:stripped_jungle_wood": {
+      "axis": "y"
+    },
+    "minecraft:stripped_mangrove_log": {
+      "axis": "y"
+    },
+    "minecraft:stripped_mangrove_wood": {
+      "axis": "y"
+    },
+    "minecraft:stripped_oak_log": {
+      "axis": "y"
+    },
+    "minecraft:stripped_oak_wood": {
+      "axis": "y"
+    },
+    "minecraft:stripped_pale_oak_log": {
+      "axis": "y"
+    },
+    "minecraft:stripped_pale_oak_wood": {
+      "axis": "y"
+    },
+    "minecraft:stripped_poplar_log": {
+      "axis": "y"
+    },
+    "minecraft:stripped_poplar_wood": {
+      "axis": "y"
+    },
+    "minecraft:stripped_spruce_log": {
+      "axis": "y"
+    },
+    "minecraft:stripped_spruce_wood": {
+      "axis": "y"
+    },
+    "minecraft:stripped_warped_hyphae": {
+      "axis": "y"
+    },
+    "minecraft:stripped_warped_stem": {
+      "axis": "y"
+    },
+    "minecraft:trapped_chest": {
+      "facing": "north"
+    },
+    "minecraft:tripwire_hook": {
+      "facing": "north"
+    },
+    "minecraft:tube_coral_wall_fan": {
+      "facing": "north"
+    },
+    "minecraft:vault": {
+      "facing": "north"
+    },
+    "minecraft:verdant_froglight": {
+      "axis": "y"
+    },
+    "minecraft:wall_torch": {
+      "facing": "north"
+    },
+    "minecraft:warped_button": {
+      "facing": "north"
+    },
+    "minecraft:warped_door": {
+      "facing": "north",
+      "hinge": "left"
+    },
+    "minecraft:warped_fence_gate": {
+      "facing": "north"
+    },
+    "minecraft:warped_hanging_sign": {
+      "rotation": "8"
+    },
+    "minecraft:warped_hyphae": {
+      "axis": "y"
+    },
+    "minecraft:warped_shelf": {
+      "facing": "north"
+    },
+    "minecraft:warped_sign": {
+      "rotation": "8"
+    },
+    "minecraft:warped_stem": {
+      "axis": "y"
+    },
+    "minecraft:warped_trapdoor": {
+      "facing": "north"
+    },
+    "minecraft:warped_wall_hanging_sign": {
+      "facing": "north"
+    },
+    "minecraft:warped_wall_sign": {
+      "facing": "north"
+    },
+    "minecraft:waxed_copper_chain": {
+      "axis": "y"
+    },
+    "minecraft:waxed_copper_chest": {
+      "facing": "north"
+    },
+    "minecraft:waxed_copper_door": {
+      "facing": "north",
+      "hinge": "left"
+    },
+    "minecraft:waxed_copper_golem_statue": {
+      "facing": "north"
+    },
+    "minecraft:waxed_copper_trapdoor": {
+      "facing": "north"
+    },
+    "minecraft:waxed_exposed_copper_chain": {
+      "axis": "y"
+    },
+    "minecraft:waxed_exposed_copper_chest": {
+      "facing": "north"
+    },
+    "minecraft:waxed_exposed_copper_door": {
+      "facing": "north",
+      "hinge": "left"
+    },
+    "minecraft:waxed_exposed_copper_golem_statue": {
+      "facing": "north"
+    },
+    "minecraft:waxed_exposed_copper_trapdoor": {
+      "facing": "north"
+    },
+    "minecraft:waxed_exposed_lightning_rod": {
+      "facing": "up"
+    },
+    "minecraft:waxed_lightning_rod": {
+      "facing": "up"
+    },
+    "minecraft:waxed_oxidized_copper_chain": {
+      "axis": "y"
+    },
+    "minecraft:waxed_oxidized_copper_chest": {
+      "facing": "north"
+    },
+    "minecraft:waxed_oxidized_copper_door": {
+      "facing": "north",
+      "hinge": "left"
+    },
+    "minecraft:waxed_oxidized_copper_golem_statue": {
+      "facing": "north"
+    },
+    "minecraft:waxed_oxidized_copper_trapdoor": {
+      "facing": "north"
+    },
+    "minecraft:waxed_oxidized_lightning_rod": {
+      "facing": "up"
+    },
+    "minecraft:waxed_weathered_copper_chain": {
+      "axis": "y"
+    },
+    "minecraft:waxed_weathered_copper_chest": {
+      "facing": "north"
+    },
+    "minecraft:waxed_weathered_copper_door": {
+      "facing": "north",
+      "hinge": "left"
+    },
+    "minecraft:waxed_weathered_copper_golem_statue": {
+      "facing": "north"
+    },
+    "minecraft:waxed_weathered_copper_trapdoor": {
+      "facing": "north"
+    },
+    "minecraft:waxed_weathered_lightning_rod": {
+      "facing": "up"
+    },
+    "minecraft:weathered_copper_chain": {
+      "axis": "y"
+    },
+    "minecraft:weathered_copper_chest": {
+      "facing": "north"
+    },
+    "minecraft:weathered_copper_door": {
+      "facing": "north",
+      "hinge": "left"
+    },
+    "minecraft:weathered_copper_golem_statue": {
+      "facing": "north"
+    },
+    "minecraft:weathered_copper_trapdoor": {
+      "facing": "north"
+    },
+    "minecraft:weathered_lightning_rod": {
+      "facing": "up"
+    },
+    "minecraft:white_banner": {
+      "rotation": "8"
+    },
+    "minecraft:white_bed": {
+      "facing": "north"
+    },
+    "minecraft:white_glazed_terracotta": {
+      "facing": "north"
+    },
+    "minecraft:white_shulker_box": {
+      "facing": "up"
+    },
+    "minecraft:white_wall_banner": {
+      "facing": "north"
+    },
+    "minecraft:wildflowers": {
+      "facing": "north"
+    },
+    "minecraft:wither_skeleton_skull": {
+      "rotation": "0"
+    },
+    "minecraft:wither_skeleton_wall_skull": {
+      "facing": "north"
+    },
+    "minecraft:yellow_banner": {
+      "rotation": "8"
+    },
+    "minecraft:yellow_bed": {
+      "facing": "north"
+    },
+    "minecraft:yellow_glazed_terracotta": {
+      "facing": "north"
+    },
+    "minecraft:yellow_shulker_box": {
+      "facing": "up"
+    },
+    "minecraft:yellow_wall_banner": {
+      "facing": "north"
+    },
+    "minecraft:zombie_head": {
+      "rotation": "0"
+    },
+    "minecraft:zombie_wall_head": {
+      "facing": "north"
+    }
+  }
+}

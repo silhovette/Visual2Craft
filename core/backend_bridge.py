@@ -263,7 +263,10 @@ class StudioBridge(QObject):
         if not self._animation_items:
             self._animation_timer.stop()
             return
-        batch_size = max(256, min(4_000, max(1, len(self._animation_items) // 28)))
+        # Large scenes should be meshed once rather than rebuilding hundreds
+        # of progressively larger meshes just to animate their arrival.
+        batch_size = (len(self._animation_items) if len(self._animation_items) > 120_000
+                      else max(256, min(4_000, max(1, len(self._animation_items) // 28))))
         for point, block in self._animation_items[:batch_size]:
             self._animation_blocks[point] = block
         del self._animation_items[:batch_size]

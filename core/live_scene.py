@@ -8,11 +8,13 @@ one bounded upload instead of one QML object per block.
 from __future__ import annotations
 
 from collections.abc import Iterable
+from array import array
 import math
-import struct
+import sys
 from typing import Any
 
 from .block_rules import prepare_plan, split_block
+from .stair_rules import block_boxes
 
 try:  # The pure scene store remains importable without Qt in unit tests.
     from PySide6.QtCore import QByteArray, Property, Signal
@@ -26,7 +28,7 @@ except ImportError:  # pragma: no cover - exercised only in non-Qt environments
         def __init__(self, *_args, **_kwargs): pass
 
 
-MAX_RENDER_BLOCKS = 120_000
+MAX_RENDER_BLOCKS = 1_000_000
 
 
 def _block_name(block: str) -> str:
@@ -51,12 +53,9 @@ def scene_blocks(scene: dict[str, Any], *, limit: int = MAX_RENDER_BLOCKS) -> di
     explicit air cells remove an earlier placement; uncertainty is simply
     absent from the result.
     """
-    # Offline example scenes use the legacy compact operation shape. Normalize
-    # that shape through the authoritative validator before resolving it.
-    if any("action" not in op for op in scene.get("ops", []) if isinstance(op, dict)):
-        from .video2pack import validate_scene
-        scene = validate_scene(scene)
-    plan = prepare_plan(scene.get("ops", []), max(limit, 50_000))
+    from .video2pack import prepare_scene, MAX_COMMANDS
+    scene = prepare_scene(scene)
+    plan = prepare_plan(scene['ops'], MAX_COMMANDS)
     blocks: dict[tuple[int, int, int], str] = {}
     for op in plan:
         block = op.get("block")
@@ -108,29 +107,7 @@ def _colour(block: str) -> tuple[float, float, float, float]:
 
 
 def _parts(block: str) -> Iterable[tuple[float, float, float, float, float, float]]:
-    """Return local boxes for the common stateful shapes used in builds."""
-    name, states = split_block(block)
-    name = name.removeprefix("minecraft:")
-    if name.endswith("_slab") and states.get("type") != "double":
-        if states.get("type") == "top":
-            yield (0, 0.5, 0, 1, 1, 1)
-        else:
-            yield (0, 0, 0, 1, 0.5, 1)
-        return
-    if name.endswith("_stairs"):
-        top = states.get("half") == "top"
-        facing = states.get("facing", "north")
-        yield (0, 0.5 if top else 0, 0, 1, 1 if top else 0.5, 1)
-        # The upper half occupies the side indicated by the facing state.
-        ranges = {"north": (0, 0.5), "south": (0.5, 1),
-                  "west": (0, 0.5), "east": (0.5, 1)}
-        lo, hi = ranges.get(facing, (0, 0.5))
-        if facing in ("north", "south"):
-            yield (0, 0 if top else 0.5, lo, 1, 0.5 if top else 1, hi)
-        else:
-            yield (lo, 0 if top else 0.5, 0, hi, 0.5 if top else 1, 1)
-        return
-    yield (0, 0, 0, 1, 1, 1)
+    yield from block_boxes(block)
 
 
 _FACES = (
@@ -159,8 +136,8 @@ def _mesh(blocks: dict[tuple[int, int, int], str]):
     maximum = (max_x, max_y, max_z)
     center = ((min_x + max_x + 1) / 2, (min_y + max_y + 1) / 2,
               (min_z + max_z + 1) / 2)
-    verts: list[float] = []
-    indices: list[int] = []
+    verts = array('f')
+    indices = array('I')
     # Block states repeat heavily in normal builds. Cache renderer-only
     # properties once per state instead of reparsing them for every face.
     render_by_block = {
@@ -172,17 +149,28 @@ def _mesh(blocks: dict[tuple[int, int, int], str]):
         for x0, y0, z0, x1, y1, z1 in shapes:
             for normal, corners in _FACES:
                 neighbour = (x + normal[0], y + normal[1], z + normal[2])
-                if neighbour in blocks and opaque and render_by_block[blocks[neighbour]][0]:
+                reaches_edge = ((normal[0] < 0 and x0 == 0) or (normal[0] > 0 and x1 == 1) or
+                                (normal[1] < 0 and y0 == 0) or (normal[1] > 0 and y1 == 1) or
+                                (normal[2] < 0 and z0 == 0) or (normal[2] > 0 and z1 == 1))
+                neighbor_render = render_by_block.get(blocks.get(neighbour))
+                if (reaches_edge and opaque and neighbor_render and neighbor_render[0]
+                        and neighbor_render[1] == ((0, 0, 0, 1, 1, 1),)):
                     continue
                 base = len(verts) // 10
                 for cx, cy, cz in corners:
-                    verts.extend((x + cx + 0.0 - center[0], y + cy + 0.0 - center[1],
-                                  z + cz + 0.0 - center[2], *normal, *rgba))
+                    verts.extend((x + x0 + cx * (x1 - x0) - center[0],
+                                  y + y0 + cy * (y1 - y0) - center[1],
+                                  z + z0 + cz * (z1 - z0) - center[2], *normal, *rgba))
                 indices.extend((base, base + 1, base + 2, base, base + 2, base + 3))
     radius = max(1.0, math.sqrt((max_x - min_x) ** 2 +
                                  (max_y - min_y) ** 2 +
                                  (max_z - min_z) ** 2) / 2)
-    return (struct.pack(f"<{len(verts)}f", *verts), struct.pack(f"<{len(indices)}I", *indices),
+    # Qt expects little-endian buffers. Packed arrays avoid Python objects
+    # and the huge argument copies caused by struct.pack(*millions_of_values).
+    if sys.byteorder != 'little':
+        verts.byteswap()
+        indices.byteswap()
+    return (verts.tobytes(), indices.tobytes(),
             center, minimum, maximum, radius)
 
 

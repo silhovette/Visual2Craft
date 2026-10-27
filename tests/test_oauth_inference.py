@@ -20,6 +20,27 @@ def model_payload(scene):
     return json.dumps(scene)
 
 class InferTests(unittest.TestCase):
+    def test_api_large_scene_has_no_application_output_token_cap(self):
+        scene = {'name': 'tower', 'size': [16, 301, 16], 'ops': [
+            {'block': 'minecraft:stone', 'from': [0, 0, 0], 'to': [0, 300, 0]}]}
+        payload = model_payload(scene)
+        seen = {}
+
+        class DummyOpenAI:
+            def __init__(self, **params):
+                self.responses = self
+
+            def create(self, **params):
+                seen.update(params)
+                return NS(output_text=payload, status='completed')
+
+        with patch('core.video2pack.video_frames', return_value=[(1, b'jpeg')]), \
+             patch.dict(sys.modules, {'openai': NS(OpenAI=DummyOpenAI)}):
+            actual = infer_scene(Path('tower.mp4'), 'model', 2,
+                                 auth_mode='api', api_key='test-key')
+        self.assertEqual(actual['ops'][0]['to'][1], 300)
+        self.assertNotIn('max_output_tokens', seen)
+
     def test_sdk_server_error_before_output_retries_once(self):
         from openai import APIError
         error = APIError('An error occurred. Request ID req_sdk_test',

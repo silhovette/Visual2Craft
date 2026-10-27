@@ -52,7 +52,7 @@ class PackTests(unittest.TestCase):
 
     def test_undo_filters_and_does_not_clear_full_volume(self):
         scene = {"name":"tiny", "size":[4,4,4], "base_y":1, "ops":[
-            {"block":"minecraft:oak_stairs[facing=north]","from":[0,0,0],"to":[0,0,0]},
+            {"block":"minecraft:oak_stairs[facing=north,half=bottom]","from":[0,0,0],"to":[0,0,0]},
             {"block":"minecraft:glass","from":[2,2,2],"to":[3,2,2]},
             {"block":"minecraft:air","from":[1,1,1],"to":[1,1,1]},
         ]}

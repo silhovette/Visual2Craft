@@ -12,6 +12,27 @@ from core.video2pack import _sample_frame_ids, _select_frame_indices, video_fram
 
 
 class VideoFramesTests(unittest.TestCase):
+    def test_sampling_preserves_asymmetric_left_right_layout(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / 'asymmetric.mp4'
+            writer = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*'mp4v'), 5, (1600, 900))
+            self.assertTrue(writer.isOpened())
+            frame = np.zeros((900, 1600, 3), dtype=np.uint8)
+            frame[:, :800] = (0, 0, 240)  # viewer-left red
+            frame[:, 800:] = (240, 0, 0)  # viewer-right blue
+            try:
+                for _ in range(4):
+                    writer.write(frame)
+            finally:
+                writer.release()
+            with redirect_stdout(StringIO()):
+                sampled = video_frames(path, 2)
+            for _, jpeg in sampled:
+                decoded = cv2.imdecode(np.frombuffer(jpeg, np.uint8), cv2.IMREAD_COLOR)
+                left, right = decoded[100, 100], decoded[100, -100]
+                self.assertGreater(int(left[2]), int(left[0]) + 150)
+                self.assertGreater(int(right[0]), int(right[2]) + 150)
+
     def test_real_mp4_sampling_and_jpeg_encoding(self):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / 'sample.mp4'

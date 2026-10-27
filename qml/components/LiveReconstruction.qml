@@ -34,9 +34,9 @@ Item {
             PerspectiveCamera {
                 id: camera
                 position: Qt.vector3d(0, 0, root.studio && root.studio.blockCount > 0
-                                      ? Math.max(12, Math.min(150, root.blockGeometry.radiusValue * 2.8)) : 18)
+                                      ? Math.max(12, root.blockGeometry.radiusValue * 2.8) : 18)
                 clipNear: 0.1
-                clipFar: 300
+                clipFar: Math.max(300, position.z + (root.blockGeometry ? root.blockGeometry.radiusValue * 3 : 0))
             }
         }
         DirectionalLight {
@@ -120,7 +120,9 @@ Item {
             }
         }
         onWheel: {
-            camera.position.z = Math.max(6, Math.min(180, camera.position.z - wheel.angleDelta.y / 120 * 2))
+            var radius = root.blockGeometry ? root.blockGeometry.radiusValue : 1
+            camera.position.z = Math.max(6, Math.min(Math.max(180, radius * 6),
+                camera.position.z - wheel.angleDelta.y / 120 * Math.max(2, radius * 0.08)))
             wheel.accepted = true
         }
     }

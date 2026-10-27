@@ -10,6 +10,7 @@ import argparse
 import base64
 import heapq
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -19,14 +20,18 @@ import zipfile
 from typing import Any, Callable
 
 from .block_rules import (BLOCK_KNOWLEDGE, SPECIAL_PALETTE, build_phase,
-                          has_water, prepare_plan)
+                          has_water, prepare_plan, state_rules)
+from .scene_transform import transform_scene, entity_position
+from .entity_nbt import (compound_fields, render_fields, split_top, numeric_list,
+                         normalize_hanging_nbt)
 
 PACK_VERSION = [121, 0]  # Java 26.3
 NAMESPACE = "vidbuild"
-MAX_VOLUME = 200_000
-MAX_OPS = 500
+MAX_DIMENSIONS = (512, 384, 512)
+MAX_VOLUME = 100_663_296
+MAX_OPS = 8_000
 MAX_FILL = 4096
-MAX_COMMANDS = 50_000
+MAX_COMMANDS = 200_000
 MAX_FRAMES = 1200
 DEFAULT_FRAMES = 500
 
@@ -112,14 +117,15 @@ FORBIDDEN_MATERIAL_REPLACEMENTS = {
 ENTITY_RE = re.compile(r"^[a-z0-9_.-]+:[a-z0-9/._-]+$")
 SCENE_SCHEMA = {
     "type": "object", "additionalProperties": False,
-    "required": ["name", "size", "base_y", "ops", "entities"],
+    "required": ["name", "size", "base_y", "ops", "entities", "coordinate_system"],
     "properties": {
         "name": {"type": "string"},
         "size": {"type": "array", "items": {"type": "integer"}},
         "base_y": {"type": "integer"},
+        "coordinate_system": {"type": "string", "enum": ["facade"]},
         "ops": {"type": "array", "items": {
             "type": "object", "additionalProperties": False,
-            "required": ["action", "confidence", "evidence", "replace", "block", "from", "to"],
+            "required": ["action", "confidence", "evidence", "replace", "block", "from", "to", "stair_use"],
             "properties": {
                 "action": {"type": "string", "enum": ["place", "clear", "preserve", "unknown"]},
                 "confidence": {"type": "string", "enum": ["confirmed", "uncertain"]},
@@ -129,6 +135,7 @@ SCENE_SCHEMA = {
                                  "observation": {"type": "string"},
                                  "hint": {"type": ["string", "null"]}}},
                 "replace": {"type": "boolean"},
+                "stair_use": {"type": ["string", "null"], "enum": ["walk", "decorative", None]},
                 "block": {"type": ["string", "null"]},
                 "from": {"type": "array", "items": {"type": "integer"}},
                 "to": {"type": "array", "items": {"type": "integer"}},
@@ -136,10 +143,11 @@ SCENE_SCHEMA = {
         }},
         "entities": {"type": "array", "items": {
             "type": "object", "additionalProperties": False,
-            "required": ["entity", "position", "rotation", "nbt", "evidence"],
+            "required": ["entity", "position", "position_mode", "rotation", "nbt", "evidence"],
             "properties": {
                 "entity": {"type": "string"},
-                "position": {"type": "array", "items": {"type": "integer"}},
+                "position": {"type": "array", "items": {"type": "number"}},
+                "position_mode": {"type": "string", "enum": ["cell", "exact"]},
                 "rotation": {"type": ["array", "null"], "items": {"type": "number"}},
                 # Strict Responses schemas cannot contain an arbitrary object
                 # with unknown NBT keys. SNBT keeps entity-specific data open.
@@ -201,6 +209,11 @@ def check_block(block: str) -> str:
             if key in seen:
                 raise ValueError(f"Duplicate block state key: {block}")
             seen.add(key)
+    if m.group('namespace') == 'minecraft' and m.group('path').endswith('_stairs'):
+        rules = state_rules(m.group('path'))
+        for key, value in (pair.split('=') for pair in (states_raw or '').split(',') if pair):
+            if key not in rules or value not in rules[key]:
+                raise ValueError(f'Invalid stair state {key}={value}: {block}')
     return block
 
 
@@ -228,13 +241,27 @@ def _validate_entity_entry(entity: Any, index: int, dims: tuple[int, int, int]) 
     entity_id = entity.get('entity')
     if not isinstance(entity_id, str) or ENTITY_RE.fullmatch(entity_id) is None:
         raise ValueError(f'entities[{index}].entity is not a valid resource ID')
-    point = parse_point(entity.get('position'), f'entities[{index}].position')
-    if any(point[i] < 0 or point[i] >= dims[i] for i in range(3)):
+    point = entity.get('position')
+    if (not isinstance(point, list) or len(point) != 3 or
+            any(type(v) not in (int, float) or not math.isfinite(v) for v in point)):
+        raise ValueError(f'entities[{index}].position must contain three finite numbers')
+    mode = entity.get('position_mode')
+    if mode is None:
+        mode = ('cell' if entity_id == 'minecraft:armor_stand'
+                and type(point[0]) is int and type(point[2]) is int else 'exact')
+    if mode not in ('cell', 'exact'):
+        raise ValueError('Entity position_mode must be cell or exact')
+    if mode == 'cell' and (entity_id != 'minecraft:armor_stand' or
+                           any(type(point[i]) is not int for i in (0, 2))):
+        raise ValueError('cell positions require armor_stand with integer X/Z; use exact for other entities')
+    hanging = entity_id in ('minecraft:painting', 'minecraft:item_frame', 'minecraft:glow_item_frame')
+    if any(point[i] < 0 or point[i] > dims[i] or
+           (((mode == 'cell' and i in (0, 2)) or hanging) and point[i] == dims[i]) for i in range(3)):
         raise ValueError(f'entities[{index}].position is outside scene bounds: {point} within {dims}')
     rotation = entity.get('rotation')
     if rotation is not None:
         if (not isinstance(rotation, list) or len(rotation) != 2 or
-                any(type(v) not in (int, float) for v in rotation)):
+                any(type(v) not in (int, float) or not math.isfinite(v) for v in rotation)):
             raise ValueError(f'entities[{index}].rotation must be [yaw, pitch]')
         rotation = [float(rotation[0]), float(rotation[1])]
     evidence = entity.get('evidence')
@@ -243,11 +270,21 @@ def _validate_entity_entry(entity: Any, index: int, dims: tuple[int, int, int]) 
             not isinstance(evidence.get('observation'), str) or
             evidence.get('hint') is not None and not isinstance(evidence.get('hint'), str)):
         raise ValueError(f'Invalid evidence in entities[{index}]')
+    nbt = normalize_hanging_nbt(entity_id, _validate_entity_nbt(entity.get('nbt'), f'entities[{index}]'))
+    fields = compound_fields(nbt) if isinstance(nbt, str) else nbt
+    if 'Pos' in fields:
+        raise ValueError('Entity Pos in NBT conflicts with position; use the Scene position field')
+    if 'Rotation' in fields:
+        values = numeric_list(fields['Rotation']) if isinstance(nbt, str) else fields['Rotation']
+        if (not isinstance(values, list) or len(values) != 2 or
+                any(type(v) not in (int, float) or not math.isfinite(v) for v in values)):
+            raise ValueError('Entity NBT Rotation requires finite yaw and pitch')
     return {
         'entity': entity_id,
         'position': list(point),
+        'position_mode': mode,
         'rotation': rotation,
-        'nbt': _validate_entity_nbt(entity.get('nbt'), f'entities[{index}]'),
+        'nbt': nbt,
         'evidence': {
             'frames': list(evidence['frames']),
             'observation': evidence['observation'],
@@ -259,14 +296,17 @@ def _validate_entity_entry(entity: Any, index: int, dims: tuple[int, int, int]) 
 def validate_scene(scene: Any) -> dict[str, Any]:
     if not isinstance(scene, dict):
         raise ValueError("Scene must be a JSON object")
+    coordinate_system = scene.get('coordinate_system', 'minecraft')
+    if coordinate_system not in ('minecraft', 'facade'):
+        raise ValueError('coordinate_system must be minecraft or facade')
     dims = parse_point(scene.get("size"), "size")
-    if any(not (1 <= d <= lim) for d, lim in zip(dims, (64, 48, 64))):
-        raise ValueError("MVP dimensions limited to 64 x 48 x 64")
+    if any(not (1 <= d <= lim) for d, lim in zip(dims, MAX_DIMENSIONS)):
+        raise ValueError('Scene dimensions limited to ' + ' x '.join(map(str, MAX_DIMENSIONS)))
     base_y = scene.get('base_y', 0)
     if type(base_y) is not int or not 0 <= base_y < dims[1]:
         raise ValueError(f"base_y must be an integer within 0..{dims[1] - 1}")
     if dims[0] * dims[1] * dims[2] > MAX_VOLUME:
-        raise ValueError("Scene too large for first MVP")
+        raise ValueError(f"Scene volume exceeds {MAX_VOLUME:,} cells")
     ops = scene.get("ops")
     if not isinstance(ops, list) or not 1 <= len(ops) <= MAX_OPS:
         raise ValueError(f"Scene requires 1..{MAX_OPS} ops")
@@ -314,14 +354,24 @@ def validate_scene(scene: Any) -> dict[str, Any]:
                 not isinstance(evidence.get('observation'), str) or
                 evidence.get('hint') is not None and not isinstance(evidence.get('hint'), str)):
             raise ValueError(f'Invalid evidence in operation {i}')
+        stair_use = op.get('stair_use')
+        if stair_use not in (None, 'walk', 'decorative'):
+            raise ValueError('stair_use must be walk, decorative or null')
         validated.append({"action": action, "confidence": confidence, "replace": replace,
-                          "evidence": evidence, "block": block, "from": list(a), "to": list(b)})
+                          "evidence": evidence, "block": block, "from": list(a), "to": list(b),
+                          "stair_use": stair_use})
     raw_entities = scene.get('entities', [])
     if not isinstance(raw_entities, list) or len(raw_entities) > MAX_OPS:
         raise ValueError(f'entities requires 0..{MAX_OPS} entries')
     entities = [_validate_entity_entry(entity, i, dims) for i, entity in enumerate(raw_entities)]
     return {"name": str(scene.get("name") or "video_build")[:80], "size": list(dims),
-            "base_y": base_y, "ops": validated, "entities": entities}
+            "base_y": base_y, "ops": validated, "entities": entities,
+            "coordinate_system": coordinate_system}
+
+
+def prepare_scene(scene, *, rotation=0, mirror=False):
+    """Canonical geometry shared by direct commands, export and preview."""
+    return validate_scene(transform_scene(validate_scene(scene), rotation=rotation, mirror=mirror))
 
 
 def split_fill(a: tuple[int, ...], b: tuple[int, ...]):
@@ -368,19 +418,20 @@ def _snbt(value: Any) -> str:
 
 
 def _append_snbt_fields(raw: str, fields: dict[str, Any]) -> str:
-    text = raw.strip()
-    if not text:
-        text = '{}'
-    if not (text.startswith('{') and text.endswith('}')):
-        raise ValueError('Entity nbt must be an SNBT compound enclosed in braces')
-    inner = text[1:-1].strip()
-    additions = ','.join(f'{key}:{_snbt(value)}' for key, value in fields.items())
-    if not additions:
-        return text
-    return '{' + inner + (',' if inner else '') + additions + '}'
+    existing = compound_fields(raw)
+    for key, value in fields.items():
+        if key == 'Tags' and key in existing:
+            previous = existing[key].strip()
+            if not (previous.startswith('[') and previous.endswith(']')):
+                raise ValueError('Entity Tags must be a list')
+            existing[key] = '[' + ','.join(split_top(previous[1:-1]) + [_snbt(tag) for tag in value]) + ']'
+        else:
+            existing[key] = _snbt(value)
+    return render_fields(existing)
 
 
 def make_entity_commands(scene: dict[str, Any]) -> list[str]:
+    scene = prepare_scene(scene)
     commands = []
     base_y = int(scene.get('base_y', 0))
     for entity in scene.get('entities', []):
@@ -396,16 +447,17 @@ def make_entity_commands(scene: dict[str, Any]) -> list[str]:
             if not isinstance(tags, list):
                 tags = []
             nbt['Tags'] = [str(tag) for tag in tags] + ['vidbuild_entity']
-            if entity.get('rotation') is not None and 'Rotation' not in nbt:
+            if entity.get('rotation') is not None:
                 nbt['Rotation'] = entity['rotation']
             nbt_text = _snbt(nbt)
-        x, y, z = entity['position']
-        commands.append(f"summon {entity['entity']} ~{x} ~{y - base_y} ~{z} {nbt_text}")
+        x, y, z = entity_position(entity)
+        commands.append(f"summon {entity['entity']} ~{x:.15g} ~{y - base_y:.15g} ~{z:.15g} {nbt_text}")
     return commands
 
 
 def make_commands(scene: dict[str, Any], *, plan=None) -> list[str]:
-    plan = prepare_plan(validate_scene(scene)['ops'], MAX_COMMANDS) if plan is None else plan
+    scene = prepare_scene(scene)
+    plan = prepare_plan(scene['ops'], MAX_COMMANDS) if plan is None else plan
     base_y = int(scene.get('base_y', 0))
     lines = []
     for op in sorted(plan, key=build_phase):
@@ -430,7 +482,8 @@ def make_undo_commands(scene: dict[str, Any], *, plan=None) -> list[str]:
     This is still a destructive operation, not a world snapshot; it cannot
     restore terrain/blocks that were overwritten by the build.
     """
-    plan = prepare_plan(validate_scene(scene)['ops'], MAX_COMMANDS) if plan is None else plan
+    scene = prepare_scene(scene)
+    plan = prepare_plan(scene['ops'], MAX_COMMANDS) if plan is None else plan
     base_y = int(scene.get('base_y', 0))
     grass_y = base_y - 1
     commands = []
@@ -474,8 +527,11 @@ def make_undo_commands(scene: dict[str, Any], *, plan=None) -> list[str]:
 
 
 def compile_datapack(scene: dict[str, Any], output: Path, offset: tuple[int, int, int] = (5, 0, 5)) -> dict[str, Any]:
-    scene = validate_scene(scene)
-    plan = prepare_plan(scene['ops'], MAX_COMMANDS)
+    scene = prepare_scene(scene)
+    diagnostics = []
+    plan = prepare_plan(scene['ops'], MAX_COMMANDS, diagnostics=diagnostics)
+    from .entity_geometry import armor_stand_diagnostics
+    diagnostics.extend(armor_stand_diagnostics(scene, plan))
     forward = make_commands(scene, plan=plan) + make_entity_commands(scene)
     reverse = make_undo_commands(scene, plan=plan)
     if scene.get('entities'):
@@ -573,6 +629,7 @@ def compile_datapack(scene: dict[str, Any], output: Path, offset: tuple[int, int
             "entities": len(scene.get('entities', [])), "commands": len(forward),
             "undo_commands": len(reverse), "parts": len(build_chunks),
             "offset": list(offset), "undo_function": f"{NAMESPACE}:undo",
+            "diagnostics": diagnostics,
             "skipped_regions": sum(op['action'] in ('unknown', 'preserve') or
                                    op['confidence'] == 'uncertain' for op in scene['ops'])}
 
@@ -870,7 +927,8 @@ def infer_scene(video: Path, model: str, frame_count: int, api_key: str | None =
                    text={"format": {"type": "json_schema", "name": "minecraft_build_scene", "strict": True, "schema": SCENE_SCHEMA}})
     if auth_mode == "api":
         client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"), max_retries=0)
-        request['max_output_tokens'] = 20000
+        # Let the selected model use its output budget; the former 20k cap
+        # could stop a detailed large-building scene before its upper floors.
     else:
         # OpenAI's Sign in with ChatGPT usage route specifically requires
         # store=False, stream=True and forbids max_output_tokens. It uses the
@@ -948,7 +1006,7 @@ def run(*, video: str | None = None, scene_path: str | None = None, out: str = "
         auth_mode: str = "chatgpt", access_token: str | None = None,
         offset: tuple[int, int, int] = (5, 0, 5),
         progress: Callable[[str], None] | None = None,
-        building_hints: str = '') -> dict[str, Any]:
+        building_hints: str = '', rotation: int = 0, mirror: bool = False) -> dict[str, Any]:
     if (video is None) == (scene_path is None):
         raise ValueError("Choose exactly one: video or scene_path")
     if not 2 <= frames <= MAX_FRAMES:
@@ -960,8 +1018,12 @@ def run(*, video: str | None = None, scene_path: str | None = None, out: str = "
                             auth_mode=auth_mode, access_token=access_token, progress=progress,
                             building_hints=building_hints)
     _report_progress(progress, 'Scene received and validated. Writing Data Pack ZIP...')
+    scene = prepare_scene(scene, rotation=rotation, mirror=mirror)
     dest = Path(out)
-    return compile_datapack(scene, dest, offset=offset)
+    summary = compile_datapack(scene, dest, offset=offset)
+    for diagnostic in summary.get('diagnostics', []):
+        _report_progress(progress, diagnostic)
+    return summary
 
 
 def main():
@@ -976,6 +1038,9 @@ def main():
                         help=f"Sample 2..{MAX_FRAMES} frames (default: {DEFAULT_FRAMES})")
     parser.add_argument("--offset", nargs=3, type=int, default=(5,0,5), metavar=("X","Y","Z"))
     parser.add_argument('--building-hints', default='', help='Optional explicit building instructions; kept separate from video evidence')
+    parser.add_argument('--rotate', type=int, choices=(0, 90, 180, 270), default=0,
+                        help='Rotate the whole normalized scene, including directional states and entities')
+    parser.add_argument('--mirror', action='store_true', help='Reflect the normalized scene across its X axis')
     args = parser.parse_args()
     try:
         access_token = None
@@ -988,7 +1053,8 @@ def main():
                 model = auth.models()[0][1]
         summary = run(video=args.video, scene_path=args.scene, out=args.out, model=model,
                       frames=args.frames, auth_mode=args.auth, access_token=access_token,
-                      offset=tuple(args.offset), building_hints=args.building_hints)
+                      offset=tuple(args.offset), building_hints=args.building_hints,
+                      rotation=args.rotate, mirror=args.mirror)
         print(f"Created: {summary['zip']} ({summary['commands']} block commands)")
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

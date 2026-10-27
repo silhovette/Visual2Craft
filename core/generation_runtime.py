@@ -1,9 +1,4 @@
-"""Pure Python generation runtime; no GUI dependencies or inference algorithm changes.
-
-All inference and datapack logic remains in the archived old-version
-video2pack module.
-Qt runs this function in a spawned child process so cancellation is real.
-"""
+"""Pure Python generation runtime; Qt launches a separate cancellable process."""
 from __future__ import annotations
 
 import os
@@ -76,13 +71,13 @@ def generation_worker(params: dict, messages):
         if params.get('auth_mode') == 'chatgpt':
             from .chatgpt_auth import ChatGPTAuth
             params['access_token'] = ChatGPTAuth().access_token()
-        # Keep the archived core's public API and source contract unchanged.
-        # Wrapping its compiler lets us publish the exact validated scene only
-        # after the same plan has successfully produced the ZIP.
+        # Publish canonical coordinates only after that geometry has produced
+        # the ZIP; the viewer must not display the pre-transform facade scene.
         published_scene = None
         original_compile = video2pack.compile_datapack
         def compile_and_publish(scene, output, offset=(5, 0, 5)):
             nonlocal published_scene
+            scene = video2pack.prepare_scene(scene)
             summary = original_compile(scene, output, offset=offset)
             published_scene = scene
             return summary
