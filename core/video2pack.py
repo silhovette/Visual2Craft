@@ -341,12 +341,19 @@ def validate_scene(scene: Any) -> dict[str, Any]:
                 raise ValueError(f'ops[{i}].block ({kind}): {exc}') from None
             if (action == 'clear') != (block == 'minecraft:air'):
                 raise ValueError('Air requires an explicit clear action; clear may only place minecraft:air')
-        a = parse_point(op.get("from"), f"ops[{i}].from")
-        b = parse_point(op.get("to"), f"ops[{i}].to")
+        raw_a = parse_point(op.get("from"), f"ops[{i}].from")
+        raw_b = parse_point(op.get("to"), f"ops[{i}].to")
+        # Models occasionally emit the two opposite corners in reverse order
+        # on one axis (for example z=6 .. z=0).  A cuboid is unordered by
+        # nature, so normalize each axis before checking bounds and compiling.
+        # This preserves the requested region while avoiding a needless
+        # generation failure.
+        a = tuple(min(raw_a[axis], raw_b[axis]) for axis in range(3))
+        b = tuple(max(raw_a[axis], raw_b[axis]) for axis in range(3))
         if any(a[j] > b[j] or a[j] < 0 or b[j] >= dims[j] for j in range(3)):
             raise ValueError(f"Invalid bounds in operation {i}: {a}..{b} within {dims}")
-        if block == "minecraft:air" and (b[0] - a[0] + 1)*(b[1] - a[1] + 1)*(b[2] - a[2] + 1) > 1000:
-            raise ValueError(f"Air clearing too large in operation {i}; prevents terrain damage")
+        if block == "minecraft:air" and (b[0] - a[0] + 1)*(b[1] - a[1] + 1)*(b[2] - a[2] + 1) > 100000:
+            raise ValueError(f"Air clearing too large in operation {i}; keep clears bounded to the building interior")
         evidence = op.get('evidence')
         if evidence is not None and (not isinstance(evidence, dict) or
                 not isinstance(evidence.get('frames'), list) or

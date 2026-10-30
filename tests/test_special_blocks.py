@@ -151,6 +151,11 @@ class SpecialBlockTests(unittest.TestCase):
             validate_scene(scene(op('minecraft:glass', action='clear')))
         self.assertIn('minecraft:air', make_commands(scene(op('minecraft:air', action='clear')))[0])
 
+    def test_reversed_cuboid_corners_are_normalized(self):
+        checked = validate_scene(scene(op('minecraft:stone', (2, 3, 6), (2, 3, 0))))
+        self.assertEqual(checked['ops'][0]['from'], [2, 3, 0])
+        self.assertEqual(checked['ops'][0]['to'], [2, 3, 6])
+
     def test_overlapping_operations_use_later_operation(self):
         for special in ('minecraft:light[level=8]', 'minecraft:barrier', 'minecraft:glass',
                         'minecraft:structure_void', 'minecraft:water[level=0]'):
